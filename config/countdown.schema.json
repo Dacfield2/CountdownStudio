@@ -7,7 +7,11 @@
     "schemaVersion",
     "durationSeconds",
     "autoStart",
-    "showBackground"
+    "showBackground",
+    "textColor",
+    "backgroundColor",
+    "fontSizePercent",
+    "timeFormat"
   ],
   "properties": {
     "schemaVersion": {
@@ -23,6 +27,29 @@
     },
     "showBackground": {
       "type": "boolean"
+    },
+    "textColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{8}$",
+      "description": "ARGB hexadecimal color, for example #FFFFFFFF."
+    },
+    "backgroundColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{8}$",
+      "description": "ARGB hexadecimal color with alpha, for example #99000000."
+    },
+    "fontSizePercent": {
+      "type": "integer",
+      "minimum": 25,
+      "maximum": 100
+    },
+    "timeFormat": {
+      "type": "string",
+      "enum": [
+        "automatic",
+        "MM:SS",
+        "HH:MM:SS"
+      ]
     }
   }
 }

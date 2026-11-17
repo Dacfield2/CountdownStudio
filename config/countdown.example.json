@@ -2,5 +2,9 @@
   "schemaVersion": 1,
   "durationSeconds": 600,
   "autoStart": true,
-  "showBackground": false
+  "showBackground": false,
+  "textColor": "#FFFFFFFF",
+  "backgroundColor": "#99000000",
+  "fontSizePercent": 100,
+  "timeFormat": "automatic"
 }

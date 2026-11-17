@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Countdown Studio — Remote Control</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #0b1020; color: #f3f6ff; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 20% 0%, #192757 0, transparent 45%), #0b1020; }
+    main { width: min(100%, 640px); }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: #10172e; font-weight: 900; background: linear-gradient(135deg, #84f2cf, #75a9ff); }
+    h1 { font-size: 20px; margin: 0; letter-spacing: -.03em; }
+    .subtitle { color: #9daacb; font-size: 13px; margin-top: 3px; }
+    .card { border: 1px solid #253151; border-radius: 18px; background: #111a31eF; padding: 20px; margin-top: 14px; box-shadow: 0 18px 60px #02061555; }
+    h2 { font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: #aebce0; margin: 0 0 16px; }
+    label { display: block; color: #b7c3df; font-size: 12px; margin: 12px 0 6px; }
+    input, select { width: 100%; border: 1px solid #344366; border-radius: 10px; background: #0b1226; color: #f5f7ff; padding: 11px 12px; outline: none; }
+    input:focus, select:focus { border-color: #82a8ff; box-shadow: 0 0 0 3px #82a8ff22; }
+    .row { display: flex; gap: 10px; align-items: end; }
+    .row > * { flex: 1; }
+    button { cursor: pointer; border: 1px solid #35456b; border-radius: 10px; color: #eff4ff; background: #1b2948; padding: 11px 14px; font-weight: 650; transition: transform .12s, background .12s, opacity .12s; }
+    button:hover:not(:disabled) { transform: translateY(-1px); background: #263962; }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    button.primary { color: #091426; border-color: transparent; background: linear-gradient(135deg, #82f0ce, #82b1ff); }
+    button.primary:hover:not(:disabled) { background: linear-gradient(135deg, #a0f6dc, #a0c4ff); }
+    .connect-row { display: flex; gap: 10px; margin-top: 16px; }
+    .connect-row button { flex: 1; }
+    .status { min-height: 22px; color: #a8b8dc; font-size: 12px; margin-top: 12px; }
+    .status.error { color: #ff9b9b; }
+    .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .controls .wide { grid-column: 1 / -1; }
+    .hint { color: #8291b5; font-size: 12px; line-height: 1.5; margin: 12px 0 0; }
+    .lang { width: 82px; padding: 8px; }
+    @media (max-width: 520px) { body { padding: 14px; } .card { padding: 16px; } .row { align-items: stretch; flex-direction: column; gap: 0; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand"><div class="mark">CS</div><div><h1>Countdown Studio</h1><div class="subtitle" data-i18n="subtitle">Télécommande OBS</div></div></div>
+      <select class="lang" id="language" aria-label="Language"><option value="fr">FR</option><option value="en">EN</option></select>
+    </header>
+
+    <section class="card">
+      <h2 data-i18n="connection">Connexion OBS</h2>
+      <div class="row">
+        <div><label for="address" data-i18n="address">Adresse WebSocket</label><input id="address" type="url" value="ws://127.0.0.1:4455" spellcheck="false"></div>
+        <div><label for="password" data-i18n="password">Mot de passe (si activé)</label><input id="password" type="password" autocomplete="current-password"></div>
+      </div>
+      <div class="connect-row"><button class="primary" id="connect" data-i18n="connect">Connecter à OBS</button><button id="refresh" disabled data-i18n="refresh">Actualiser les sources</button></div>
+      <div class="status" id="status" role="status" aria-live="polite" data-i18n="disconnected">Déconnecté</div>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="timer">Commandes du minuteur</h2>
+      <label for="source" data-i18n="source">Source Countdown Studio</label>
+      <select id="source" disabled><option value="" data-i18n="noSources">Aucune source trouvée</option></select>
+      <div class="controls" style="margin-top:14px">
+        <button class="action" data-command="start" disabled data-i18n="start">Démarrer / reprendre</button>
+        <button class="action" data-command="pause" disabled data-i18n="pause">Mettre en pause</button>
+        <button class="action wide" data-command="restart" disabled data-i18n="restart">Redémarrer le compte à rebours</button>
+        <button class="action" data-command="add_minute" disabled data-i18n="addOne">+ 1 minute</button>
+        <button class="action" data-command="add_five_minutes" disabled data-i18n="addFive">+ 5 minutes</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="minutes" data-i18n="minutes">Minutes à ajouter</label><input id="minutes" type="number" min="1" max="120" value="10"></div>
+        <button class="action" id="addCustom" disabled data-i18n="addSelected">Ajouter ce temps</button>
+      </div>
+      <p class="hint" data-i18n="hint">Le temps ajouté est appliqué immédiatement au minuteur sélectionné. Active le serveur WebSocket dans OBS → Outils → Paramètres du serveur WebSocket.</p>
+    </section>
+  </main>
+<script>
+(() => {
+  const text = {
+    fr: { subtitle:"Télécommande OBS", connection:"Connexion OBS", address:"Adresse WebSocket", password:"Mot de passe (si activé)", connect:"Connecter à OBS", disconnect:"Déconnecter", refresh:"Actualiser les sources", disconnected:"Déconnecté", connecting:"Connexion en cours…", connected:"Connecté à OBS", timer:"Commandes du minuteur", source:"Source Countdown Studio", noSources:"Aucune source trouvée", start:"Démarrer / reprendre", pause:"Mettre en pause", restart:"Redémarrer le compte à rebours", addOne:"+ 1 minute", addFive:"+ 5 minutes", minutes:"Minutes à ajouter", addSelected:"Ajouter ce temps", hint:"Le temps ajouté est appliqué immédiatement au minuteur sélectionné. Active le serveur WebSocket dans OBS → Outils → Paramètres du serveur WebSocket.", sourceCount:n=>`${n} source(s) trouvée(s)`, noTimer:"Aucune source Countdown Studio détectée.", actionDone:"Commande envoyée.", timeDone:n=>`${n} minute(s) ajoutée(s).`, authMissing:"Mot de passe requis par OBS.", failed:"Échec de la commande", connectedNoSources:"Connecté, mais aucune source Countdown Studio n’a été trouvée.", badUrl:"Adresse WebSocket invalide." },
+    en: { subtitle:"OBS remote control", connection:"OBS connection", address:"WebSocket address", password:"Password (if enabled)", connect:"Connect to OBS", disconnect:"Disconnect", refresh:"Refresh sources", disconnected:"Disconnected", connecting:"Connecting…", connected:"Connected to OBS", timer:"Timer controls", source:"Countdown Studio source", noSources:"No source found", start:"Start / Resume", pause:"Pause", restart:"Restart countdown", addOne:"+ 1 minute", addFive:"+ 5 minutes", minutes:"Minutes to add", addSelected:"Add this time", hint:"Added time is applied immediately to the selected timer. Enable the WebSocket server in OBS → Tools → WebSocket Server Settings.", sourceCount:n=>`${n} source(s) found`, noTimer:"No Countdown Studio source detected.", actionDone:"Command sent.", timeDone:n=>`${n} minute(s) added.`, authMissing:"OBS requires a password.", failed:"Command failed", connectedNoSources:"Connected, but no Countdown Studio source was found.", badUrl:"Invalid WebSocket address." }
+  };
+  const $ = id => document.getElementById(id);
+  const status = $("status"), sourceSelect = $("source"), connectButton = $("connect"), refreshButton = $("refresh");
+  let language = localStorage.getItem("countdownstudio-language") || "fr", socket = null, identified = false, requestNumber = 0;
+  const pending = new Map();
+  const tr = key => text[language][key];
+  function setStatus(message, error = false) { status.textContent = message; status.classList.toggle("error", error); }
+  function setLanguage(value) {
+    language = value;
+    localStorage.setItem("countdownstudio-language", value);
+    document.documentElement.lang = value;
+    document.querySelectorAll("[data-i18n]").forEach(el => { const key = el.dataset.i18n; if (typeof text[value][key] === "string") el.textContent = text[value][key]; });
+    connectButton.textContent = socket && socket.readyState < 2 ? tr("disconnect") : tr("connect");
+  }
+  function updateControls() {
+    const enabled = identified && !!sourceSelect.value;
+    document.querySelectorAll(".action").forEach(button => { button.disabled = !enabled; });
+    refreshButton.disabled = !identified;
+    sourceSelect.disabled = !identified || sourceSelect.options.length < 2;
+  }
+  function rejectPending(reason) { for (const item of pending.values()) { clearTimeout(item.timeout); item.reject(new Error(reason)); } pending.clear(); }
+  function sendRequest(requestType, requestData = {}) {
+    if (!identified || !socket || socket.readyState !== WebSocket.OPEN) return Promise.reject(new Error(tr("disconnected")));
+    const requestId = String(++requestNumber);
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => { pending.delete(requestId); reject(new Error("Request timed out")); }, 8000);
+      pending.set(requestId, { resolve, reject, timeout });
+      socket.send(JSON.stringify({ op: 6, d: { requestType, requestId, requestData } }));
+    });
+  }
+  async function makeAuthentication(password, salt, challenge) {
+    if (!crypto.subtle) throw new Error("Secure SHA-256 is unavailable in this browser context. Open this file in a current browser.");
+    const hash = async value => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+    const base64 = bytes => btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(""));
+    const secret = base64(await hash(password + salt));
+    return base64(await hash(secret + challenge));
+  }
+  async function handleMessage(message) {
+    if (message.op === 0) {
+      try {
+        const hello = message.d, identification = { rpcVersion: hello.rpcVersion, eventSubscriptions: 0 };
+        if (hello.authentication) {
+          const password = $("password").value;
+          if (!password) { setStatus(tr("authMissing"), true); socket.close(); return; }
+          identification.authentication = await makeAuthentication(password, hello.authentication.salt, hello.authentication.challenge);
+        }
+        socket.send(JSON.stringify({ op: 1, d: identification }));
+      } catch (error) { setStatus(error.message, true); socket.close(); }
+    } else if (message.op === 2) {
+      identified = true;
+      connectButton.textContent = tr("disconnect");
+      setStatus(tr("connected"));
+      await refreshSources();
+    } else if (message.op === 7) {
+      const response = message.d, item = pending.get(response.requestId);
+      if (item) {
+        clearTimeout(item.timeout); pending.delete(response.requestId);
+        if (response.requestStatus && response.requestStatus.result) item.resolve(response.responseData || {});
+        else item.reject(new Error(response.requestStatus?.comment || tr("failed")));
+      }
+    }
+  }
+  async function refreshSources() {
+    if (!identified) return;
+    try {
+      const previous = sourceSelect.value;
+      const result = await sendRequest("GetInputList");
+      const inputs = (result.inputs || []).filter(input => input.inputKind === "countdown_studio_timer");
+      sourceSelect.replaceChildren();
+      if (!inputs.length) {
+        const option = document.createElement("option"); option.value = ""; option.textContent = tr("noSources"); sourceSelect.append(option);
+        setStatus(tr("connectedNoSources"));
+      } else {
+        for (const input of inputs) { const option = document.createElement("option"); option.value = input.inputName; option.textContent = input.inputName; sourceSelect.append(option); }
+        if (inputs.some(input => input.inputName === previous)) sourceSelect.value = previous;
+        setStatus(tr("sourceCount")(inputs.length));
+      }
+      updateControls();
+    } catch (error) { setStatus(error.message, true); }
+  }
+  async function runAction(propertyName) {
+    try {
+      await sendRequest("PressInputPropertiesButton", { inputName: sourceSelect.value, propertyName });
+      setStatus(tr("actionDone"));
+    } catch (error) { setStatus(`${tr("failed")}: ${error.message}`, true); }
+  }
+  async function connect() {
+    if (socket && socket.readyState < 2) { socket.close(); return; }
+    const address = $("address").value.trim();
+    try { new URL(address); } catch { setStatus(tr("badUrl"), true); return; }
+    localStorage.setItem("countdownstudio-address", address);
+    identified = false; updateControls(); setStatus(tr("connecting"));
+    try {
+      socket = new WebSocket(address, "obswebsocket.json");
+      socket.onmessage = event => { try { handleMessage(JSON.parse(event.data)); } catch (error) { setStatus(error.message, true); } };
+      socket.onerror = () => setStatus(tr("failed"), true);
+      socket.onclose = () => { const wasIdentified = identified; identified = false; connectButton.textContent = tr("connect"); updateControls(); rejectPending(tr("disconnected")); if (wasIdentified) setStatus(tr("disconnected")); };
+    } catch (error) { setStatus(error.message, true); }
+  }
+  $("language").value = language;
+  $("language").addEventListener("change", event => setLanguage(event.target.value));
+  $("address").value = localStorage.getItem("countdownstudio-address") || $("address").value;
+  connectButton.addEventListener("click", connect);
+  refreshButton.addEventListener("click", refreshSources);
+  sourceSelect.addEventListener("change", updateControls);
+  document.querySelectorAll(".action[data-command]").forEach(button => button.addEventListener("click", () => runAction(button.dataset.command)));
+  $("addCustom").addEventListener("click", async () => {
+    const minutes = Math.max(1, Math.min(120, Number.parseInt($("minutes").value, 10) || 1));
+    try { for (let index = 0; index < minutes; index++) await sendRequest("PressInputPropertiesButton", { inputName: sourceSelect.value, propertyName: "add_minute" }); setStatus(tr("timeDone")(minutes)); }
+    catch (error) { setStatus(`${tr("failed")}: ${error.message}`, true); }
+  });
+  setLanguage(language); updateControls();
+})();
+</script>
+</body>
+</html>

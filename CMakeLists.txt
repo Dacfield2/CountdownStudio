@@ -29,12 +29,15 @@ endif()
 
 if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
     find_package(libobs REQUIRED)
+    find_package(obs-frontend-api REQUIRED)
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
     add_library(countdownstudio MODULE
         src/obs/plugin-main.cpp
         src/obs/countdown-source.cpp
+        src/obs/countdown-dock.cpp
     )
-    target_link_libraries(countdownstudio PRIVATE CountdownStudio::Core OBS::libobs)
+    target_link_libraries(countdownstudio PRIVATE CountdownStudio::Core OBS::libobs OBS::obs-frontend-api Qt6::Core Qt6::Widgets)
     target_compile_features(countdownstudio PRIVATE cxx_std_20)
     set_target_properties(countdownstudio PROPERTIES
         CXX_EXTENSIONS OFF
@@ -57,7 +60,25 @@ if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
         install(TARGETS countdownstudio LIBRARY DESTINATION "bin/64bit")
         install(DIRECTORY data/ DESTINATION "data")
     endif()
+
+    if(APPLE)
+        set(COUNTDOWNSTUDIO_SOURCE_DESTINATION "CountdownStudio.plugin/Contents/Resources/source")
+    else()
+        set(COUNTDOWNSTUDIO_SOURCE_DESTINATION "source")
+    endif()
+    install(DIRECTORY src include config tests cmake data
+        DESTINATION "${COUNTDOWNSTUDIO_SOURCE_DESTINATION}")
+    install(FILES CMakeLists.txt CMakePresets.json README.md CONTRIBUTING.md LICENSE
+        DESTINATION "${COUNTDOWNSTUDIO_SOURCE_DESTINATION}")
 endif()
+
+set(CPACK_PACKAGE_NAME "CountdownStudio")
+set(CPACK_PACKAGE_VENDOR "Dacfield2")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "CountdownStudio-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+include(CPack)
 
 if(BUILD_TESTING)
     add_executable(countdownstudio_tests tests/test_countdown.cpp)

@@ -29,6 +29,8 @@ constexpr int kMargin = 32;
 constexpr int64_t kDefaultDurationSeconds = 600;
 constexpr int64_t kMaximumDurationSeconds = 604800;
 constexpr std::size_t kChannels = 4;
+constexpr uint32_t kDefaultTextColor = 0xFFFFFFFF;
+constexpr uint32_t kDefaultBackgroundColor = 0x99000000;
 
 using Glyph = std::array<uint8_t, 7>;
 
@@ -56,7 +58,7 @@ int64_t read_duration(obs_data_t *settings)
                                kMaximumDurationSeconds);
 }
 
-std::string format_remaining(Countdown::Duration remaining)
+std::string format_remaining(Countdown::Duration remaining, int format)
 {
     const auto whole_seconds = std::chrono::ceil<std::chrono::seconds>(remaining).count();
     const auto hours = whole_seconds / 3600;
@@ -65,10 +67,10 @@ std::string format_remaining(Countdown::Duration remaining)
 
     std::ostringstream text;
     text << std::setfill('0');
-    if (hours > 0) {
-        text << hours << ':' << std::setw(2) << minutes << ':' << std::setw(2) << seconds;
-    } else {
+    if (format == 1 || (format == 0 && hours == 0)) {
         text << std::setw(2) << (whole_seconds / 60) << ':' << std::setw(2) << seconds;
+    } else {
+        text << std::setw(2) << hours << ':' << std::setw(2) << minutes << ':' << std::setw(2) << seconds;
     }
     return text.str();
 }
@@ -84,6 +86,10 @@ public:
         : duration_seconds_(read_duration(settings)),
           auto_start_(obs_data_get_bool(settings, "auto_start")),
           show_background_(obs_data_get_bool(settings, "show_background")),
+          text_color_(static_cast<uint32_t>(obs_data_get_int(settings, "text_color"))),
+          background_color_(static_cast<uint32_t>(obs_data_get_int(settings, "background_color"))),
+          font_size_percent_(static_cast<int>(obs_data_get_int(settings, "font_size_percent"))),
+          time_format_(static_cast<int>(obs_data_get_int(settings, "time_format"))),
           timer_(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_})),
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
@@ -108,6 +114,11 @@ public:
         const auto new_duration = read_duration(settings);
         const auto new_auto_start = obs_data_get_bool(settings, "auto_start");
         show_background_ = obs_data_get_bool(settings, "show_background");
+        text_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "text_color"));
+        background_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "background_color"));
+        font_size_percent_ = static_cast<int>(
+            std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
+        time_format_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
 
         if (new_duration != duration_seconds_ || new_auto_start != auto_start_) {
             duration_seconds_ = new_duration;
@@ -192,17 +203,21 @@ private:
         render_pixels_locked();
     }
 
-    void set_pixel_block(int x, int y, int scale)
+    void set_pixel_block(int x, int y, int scale, uint32_t color)
     {
+        const auto red = static_cast<uint8_t>((color >> 16) & 0xFF);
+        const auto green = static_cast<uint8_t>((color >> 8) & 0xFF);
+        const auto blue = static_cast<uint8_t>(color & 0xFF);
+        const auto alpha = static_cast<uint8_t>((color >> 24) & 0xFF);
         for (int row = 0; row < scale; ++row) {
             for (int column = 0; column < scale; ++column) {
                 const auto pixel_x = static_cast<std::size_t>(x + column);
                 const auto pixel_y = static_cast<std::size_t>(y + row);
                 const auto offset = (pixel_y * kCanvasWidth + pixel_x) * kChannels;
-                pixels_[offset] = 255;
-                pixels_[offset + 1] = 255;
-                pixels_[offset + 2] = 255;
-                pixels_[offset + 3] = 255;
+                pixels_[offset] = red;
+                pixels_[offset + 1] = green;
+                pixels_[offset + 2] = blue;
+                pixels_[offset + 3] = alpha;
             }
         }
     }
@@ -211,16 +226,23 @@ private:
     {
         std::fill(pixels_.begin(), pixels_.end(), 0);
         if (show_background_) {
+            const auto red = static_cast<uint8_t>((background_color_ >> 16) & 0xFF);
+            const auto green = static_cast<uint8_t>((background_color_ >> 8) & 0xFF);
+            const auto blue = static_cast<uint8_t>(background_color_ & 0xFF);
+            const auto alpha = static_cast<uint8_t>((background_color_ >> 24) & 0xFF);
             for (std::size_t offset = 0; offset < pixels_.size(); offset += kChannels) {
-                pixels_[offset + 3] = 180;
+                pixels_[offset] = red;
+                pixels_[offset + 1] = green;
+                pixels_[offset + 2] = blue;
+                pixels_[offset + 3] = alpha;
             }
         }
 
-        const auto text = format_remaining(timer_.remaining());
+        const auto text = format_remaining(timer_.remaining(), time_format_);
         const int text_units = static_cast<int>(text.size()) * 6 - 1;
         const int scale_x = (static_cast<int>(kCanvasWidth) - 2 * kMargin) / text_units;
         const int scale_y = (static_cast<int>(kCanvasHeight) - 2 * kMargin) / 7;
-        const int scale = std::max(1, std::min(scale_x, scale_y));
+        const int scale = std::max(1, std::min(scale_x, scale_y) * font_size_percent_ / 100);
         const int text_width = text_units * scale;
         const int origin_x = (static_cast<int>(kCanvasWidth) - text_width) / 2;
         const int origin_y = (static_cast<int>(kCanvasHeight) - 7 * scale) / 2;
@@ -231,7 +253,8 @@ private:
             for (std::size_t row = 0; row < glyph.size(); ++row) {
                 for (int column = 0; column < 5; ++column) {
                     if ((glyph[row] & (1U << (4 - column))) != 0) {
-                        set_pixel_block(glyph_x + column * scale, origin_y + static_cast<int>(row) * scale, scale);
+                        set_pixel_block(glyph_x + column * scale, origin_y + static_cast<int>(row) * scale, scale,
+                                        text_color_);
                     }
                 }
             }
@@ -244,6 +267,10 @@ private:
     int64_t duration_seconds_;
     bool auto_start_;
     bool show_background_;
+    uint32_t text_color_;
+    uint32_t background_color_;
+    int font_size_percent_;
+    int time_format_;
     Countdown timer_;
     std::vector<uint8_t> pixels_;
     int64_t last_display_seconds_{std::numeric_limits<int64_t>::min()};
@@ -297,6 +324,10 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
+    obs_data_set_default_int(settings, "text_color", kDefaultTextColor);
+    obs_data_set_default_int(settings, "background_color", kDefaultBackgroundColor);
+    obs_data_set_default_int(settings, "font_size_percent", 100);
+    obs_data_set_default_int(settings, "time_format", 0);
 }
 
 bool start_clicked(obs_properties_t *, obs_property_t *, void *data)
@@ -336,12 +367,21 @@ obs_properties_t *source_properties(void *data)
                            static_cast<int>(kMaximumDurationSeconds), 1);
     obs_properties_add_bool(properties, "auto_start", obs_module_text("Settings.AutoStart"));
     obs_properties_add_bool(properties, "show_background", obs_module_text("Settings.ShowBackground"));
+    obs_properties_add_color_alpha(properties, "text_color", obs_module_text("Settings.TextColor"));
+    obs_properties_add_color_alpha(properties, "background_color", obs_module_text("Settings.BackgroundColor"));
+    obs_properties_add_int_slider(properties, "font_size_percent", obs_module_text("Settings.FontSize"), 25, 100, 1);
+    auto *format = obs_properties_add_list(properties, "time_format", obs_module_text("Settings.TimeFormat"),
+                                           OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_list_add_int(format, obs_module_text("Format.Automatic"), 0);
+    obs_property_list_add_int(format, "MM:SS", 1);
+    obs_property_list_add_int(format, "HH:MM:SS", 2);
 
     if (data != nullptr) {
         obs_properties_add_button2(properties, "start", obs_module_text("Controls.Start"), start_clicked, data);
         obs_properties_add_button2(properties, "pause", obs_module_text("Controls.Pause"), pause_clicked, data);
         obs_properties_add_button2(properties, "restart", obs_module_text("Controls.Restart"), restart_clicked, data);
-        obs_properties_add_button2(properties, "add_minute", obs_module_text("Controls.AddMinute"), add_minute_clicked, data);
+        obs_properties_add_button2(properties, "add_minute", obs_module_text("Controls.AddMinute"),
+                                   add_minute_clicked, data);
         obs_properties_add_button2(properties, "add_five_minutes", obs_module_text("Controls.AddFiveMinutes"),
                                    add_five_minutes_clicked, data);
     }
