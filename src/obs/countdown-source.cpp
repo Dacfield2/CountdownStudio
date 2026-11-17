@@ -159,6 +159,16 @@ public:
         render_pixels_locked();
     }
 
+    void add_minute()
+    {
+        add_time(std::chrono::minutes{1});
+    }
+
+    void add_five_minutes()
+    {
+        add_time(std::chrono::minutes{5});
+    }
+
     void restart()
     {
         std::lock_guard lock(mutex_);
@@ -166,6 +176,13 @@ public:
     }
 
 private:
+    void add_time(Countdown::Duration extra)
+    {
+        std::lock_guard lock(mutex_);
+        timer_.add_time(extra);
+        render_pixels_locked();
+    }
+
     void reset_timer_locked(bool start)
     {
         timer_.reset(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_}));
@@ -300,6 +317,18 @@ bool restart_clicked(obs_properties_t *, obs_property_t *, void *data)
     return false;
 }
 
+bool add_minute_clicked(obs_properties_t *, obs_property_t *, void *data)
+{
+    static_cast<CountdownSource *>(data)->add_minute();
+    return false;
+}
+
+bool add_five_minutes_clicked(obs_properties_t *, obs_property_t *, void *data)
+{
+    static_cast<CountdownSource *>(data)->add_five_minutes();
+    return false;
+}
+
 obs_properties_t *source_properties(void *data)
 {
     auto *properties = obs_properties_create();
@@ -312,6 +341,9 @@ obs_properties_t *source_properties(void *data)
         obs_properties_add_button2(properties, "start", obs_module_text("Controls.Start"), start_clicked, data);
         obs_properties_add_button2(properties, "pause", obs_module_text("Controls.Pause"), pause_clicked, data);
         obs_properties_add_button2(properties, "restart", obs_module_text("Controls.Restart"), restart_clicked, data);
+        obs_properties_add_button2(properties, "add_minute", obs_module_text("Controls.AddMinute"), add_minute_clicked, data);
+        obs_properties_add_button2(properties, "add_five_minutes", obs_module_text("Controls.AddFiveMinutes"),
+                                   add_five_minutes_clicked, data);
     }
     return properties;
 }

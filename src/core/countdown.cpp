@@ -61,6 +61,34 @@ void Countdown::resume(Clock::time_point now) noexcept
     state_ = State::running;
 }
 
+void Countdown::add_time(Duration extra, Clock::time_point now) noexcept
+{
+    if (extra <= Duration::zero()) {
+        return;
+    }
+
+    switch (state(now)) {
+    case State::idle:
+        duration_ += extra;
+        paused_remaining_ = duration_;
+        break;
+    case State::running:
+        deadline_ += extra;
+        duration_ += extra;
+        break;
+    case State::paused:
+        paused_remaining_ += extra;
+        duration_ += extra;
+        break;
+    case State::finished:
+        duration_ += extra;
+        paused_remaining_ = extra;
+        deadline_ = now + extra;
+        state_ = State::running;
+        break;
+    }
+}
+
 void Countdown::reset(Duration duration) noexcept
 {
     duration_ = duration < Duration::zero() ? Duration::zero() : duration;

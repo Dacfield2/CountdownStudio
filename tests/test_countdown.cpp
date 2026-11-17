@@ -97,6 +97,40 @@ void starting_after_finish_restarts_the_duration()
     check(timer.remaining(start + 11s) == 1s, "restarted timer should count from the full duration");
 }
 
+void added_time_extends_a_running_countdown()
+{
+    const auto start = Countdown::Clock::time_point{} + 70s;
+    Countdown timer{10s};
+    timer.start(start);
+    timer.add_time(2min, start + 4s);
+
+    check(timer.remaining(start + 4s) == 126s, "adding time should extend a running deadline");
+    check(timer.remaining(start + 126s) == 4s, "added time should remain part of the running countdown");
+}
+
+void added_time_extends_a_paused_countdown()
+{
+    const auto start = Countdown::Clock::time_point{} + 80s;
+    Countdown timer{10s};
+    timer.start(start);
+    timer.pause(start + 4s);
+    timer.add_time(3min, start + 100s);
+
+    check(timer.state(start + 100s) == Countdown::State::paused, "adding time should keep a paused timer paused");
+    check(timer.remaining(start + 100s) == 186s, "adding time should increase a paused remainder");
+}
+
+void added_time_restarts_a_finished_countdown()
+{
+    const auto start = Countdown::Clock::time_point{} + 90s;
+    Countdown timer{2s};
+    timer.start(start);
+    timer.add_time(1min, start + 2s);
+
+    check(timer.state(start + 2s) == Countdown::State::running, "adding time after finish should restart the timer");
+    check(timer.remaining(start + 2s) == 60s, "a finished timer should resume with the added duration");
+}
+
 void negative_duration_is_clamped_to_zero()
 {
     const auto now = Countdown::Clock::time_point{} + 60s;
@@ -116,6 +150,9 @@ int main()
     run("reset duration", reset_restarts_with_a_new_duration);
     run("zero duration", zero_duration_finishes_immediately);
     run("restart after finish", starting_after_finish_restarts_the_duration);
+    run("add time while running", added_time_extends_a_running_countdown);
+    run("add time while paused", added_time_extends_a_paused_countdown);
+    run("add time after finish", added_time_restarts_a_finished_countdown);
     run("negative duration", negative_duration_is_clamped_to_zero);
 
     if (failures != 0) {

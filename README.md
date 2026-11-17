@@ -6,7 +6,7 @@ Countdown Studio is a cross-platform OBS Studio countdown project. Its timer eng
 
 ### Project status
 
-The project includes a C++20 timer engine, deterministic tests, a working native OBS timer source, source properties for timer controls, configuration examples, and English/French localization. The OBS module is optional at configure time because a matching OBS development package is required. The source renders a transparent 1280×360 countdown overlay; OBS can scale it to any canvas resolution.
+The project includes a C++20 timer engine, deterministic tests, a working native OBS timer source, source properties for timer controls, live time extensions, configuration examples, and English/French localization. The OBS module is optional at configure time because a matching OBS development package is required. The source renders a transparent 1280×360 countdown overlay; OBS can scale it to any canvas resolution.
 
 ### Build the core and run its tests
 
@@ -47,7 +47,7 @@ cmake --install build-obs --prefix "$HOME/Library/Application Support/obs-studio
 cmake --install build-obs --prefix "$HOME/.config/obs-studio/plugins/CountdownStudio"
 ```
 
-Then fully restart OBS. In **Sources**, select **+ → Countdown Studio Timer**. Set the duration and choose whether it starts automatically or shows a translucent black background. Use **Start / Resume**, **Pause**, and **Restart countdown** in the source properties to control it. The source displays `MM:SS`, or `H:MM:SS` for durations of at least one hour. Transform it in the scene to fit your canvas.
+Then fully restart OBS. In **Sources**, select **+ → Countdown Studio Timer**. Set the duration and choose whether it starts automatically or shows a translucent black background. Use **Start / Resume**, **Pause**, and **Restart countdown** in the source properties to control it. While it runs, **Add 1 minute** and **Add 5 minutes** extend the current countdown immediately; they also work while paused, and adding time after zero starts the timer again. The source displays `MM:SS`, or `H:MM:SS` for durations of at least one hour. Transform it in the scene to fit your canvas.
 
 Older Windows OBS installs may use the legacy `bin/64bit` plug-in folder. For Flatpak OBS, install through the matching Flatpak plug-in package or its documented plug-in path. See the [OBS Plugins Guide](https://obsproject.com/kb/plugins-guide) for platform-specific locations.
 
@@ -73,7 +73,7 @@ Countdown Studio est un projet de compte à rebours multiplateforme pour OBS Stu
 
 ### État du projet
 
-Le projet comprend un moteur de temps C++20, des tests déterministes, une source OBS native fonctionnelle, des commandes dans les propriétés de la source, des exemples de configuration et la localisation française/anglaise. Le module OBS est facultatif à la configuration, car il nécessite un environnement de développement OBS compatible. La source affiche une incrustation transparente de 1280×360 qu’OBS peut redimensionner pour toute résolution de canevas.
+Le projet comprend un moteur de temps C++20, des tests déterministes, une source OBS native fonctionnelle, des commandes dans les propriétés de la source, l’ajout de temps en direct, des exemples de configuration et la localisation française/anglaise. Le module OBS est facultatif à la configuration, car il nécessite un environnement de développement OBS compatible. La source affiche une incrustation transparente de 1280×360 qu’OBS peut redimensionner pour toute résolution de canevas.
 
 ### Compiler le cœur et lancer ses tests
 
@@ -114,7 +114,7 @@ cmake --install build-obs --prefix "$HOME/Library/Application Support/obs-studio
 cmake --install build-obs --prefix "$HOME/.config/obs-studio/plugins/CountdownStudio"
 ```
 
-Redémarrez complètement OBS. Dans **Sources**, choisissez **+ → Minuteur Countdown Studio**. Réglez la durée et indiquez si le minuteur démarre automatiquement ou affiche un fond noir translucide. Les boutons **Démarrer / reprendre**, **Mettre en pause** et **Réinitialiser le compte à rebours** dans les propriétés de la source le contrôlent. L’affichage utilise `MM:SS`, ou `H:MM:SS` à partir d’une heure. Transformez la source dans la scène pour l’adapter au canevas.
+Redémarrez complètement OBS. Dans **Sources**, choisissez **+ → Minuteur Countdown Studio**. Réglez la durée et indiquez si le minuteur démarre automatiquement ou affiche un fond noir translucide. Les boutons **Démarrer / reprendre**, **Mettre en pause** et **Réinitialiser le compte à rebours** dans les propriétés de la source le contrôlent. Pendant le décompte, **Ajouter 1 minute** et **Ajouter 5 minutes** prolongent immédiatement le temps restant; ils fonctionnent aussi en pause, et ajoutés après zéro, ils relancent le minuteur. L’affichage utilise `MM:SS`, ou `H:MM:SS` à partir d’une heure. Transformez la source dans la scène pour l’adapter au canevas.
 
 Les anciennes versions Windows d’OBS peuvent utiliser le dossier historique `bin/64bit`. Pour OBS Flatpak, installez le plugin via le paquet Flatpak compatible ou suivez le chemin de plugins documenté pour cette installation. Consultez le [guide officiel des plugins OBS](https://obsproject.com/kb/plugins-guide) pour les dossiers propres à chaque plateforme.
 

@@ -21,6 +21,7 @@ public:
     void start(Clock::time_point now = Clock::now()) noexcept;
     void pause(Clock::time_point now = Clock::now()) noexcept;
     void resume(Clock::time_point now = Clock::now()) noexcept;
+    void add_time(Duration extra, Clock::time_point now = Clock::now()) noexcept;
     void reset(Duration duration) noexcept;
 
     [[nodiscard]] State state(Clock::time_point now = Clock::now()) const noexcept;
