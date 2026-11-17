@@ -72,17 +72,17 @@ Then fully restart OBS. In **Sources**, select **+ → Countdown Studio Timer**.
 
 Open **Docks → Countdown Studio Controls** for the same controls inside OBS. In the source properties you can also choose the font and style, text/background colors and transparency, text size, and automatic, `MM:SS`, or `HH:MM:SS` formatting.
 
-### Browser controls and portable package
+### Browser controls and installation package
 
 Enable **Tools → WebSocket Server Settings** in OBS. Open `data/web/control.html` from the project or installed plug-in folder in a local browser, connect to `ws://127.0.0.1:4455`, and select the Countdown Studio source. The page can start, pause, restart, and add 1, 5, or a chosen number of minutes to the same OBS source. Enter your OBS WebSocket password if authentication is enabled; it is not saved by the page. This page is a control panel, not a Browser Source overlay.
 
-Generate a portable ZIP for the current platform after configuring and building the OBS module:
+After configuring and building the OBS module for the right OBS family, create its installation package:
 
 ```sh
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-Extract the ZIP into the platform's OBS plug-in directory shown above. Each archive includes the matching source files and license under `source/`. CPack creates portable archives; it does not create signed MSI, PKG, or DEB installers.
+On Windows, CPack creates a guided installer and a ZIP. The installer defaults to `%ProgramData%\obs-studio\plugins\CountdownStudio`; for portable OBS, choose `<OBS folder>\plugins\CountdownStudio` in the installer. Use the `legacy` build for OBS 32 or the `modern` build for OBS 33+. On macOS and Linux, CPack creates a ZIP; extract it into the matching OBS plugin folder shown above. Each package includes the corresponding source files and license under `source/`. The Windows installer is not code-signed.
 
 For OBS 32 portable installs, use the legacy plugin path documented for that OBS build; for OBS 33+ portable installs, place the modern plugin folder inside the OBS portable root. For Flatpak OBS, use a package compatible with that Flatpak runtime. See the [OBS Plugins Guide](https://obsproject.com/kb/plugins-guide) and [plugin location migration guide](https://obsproject.com/kb/legacy-plugin-locations) for platform-specific locations.
 
@@ -175,17 +175,17 @@ Redémarrez complètement OBS. Dans **Sources**, choisissez **+ → Minuteur Cou
 
 Ouvrez **Docks → Commandes Countdown Studio** pour retrouver les commandes dans OBS. Dans les propriétés de la source, vous pouvez aussi choisir la police et le style, la couleur et la transparence du texte et du fond, la taille du texte ainsi que le format automatique, `MM:SS` ou `HH:MM:SS`.
 
-### Commandes navigateur et archive portable
+### Commandes navigateur et paquet d’installation
 
 Activez **Outils → Paramètres du serveur WebSocket** dans OBS. Ouvrez `data/web/control.html` depuis le dépôt ou le dossier du plugin installé dans un navigateur local, connectez-vous à `ws://127.0.0.1:4455`, puis choisissez la source Countdown Studio. La page peut démarrer, mettre en pause, réinitialiser et ajouter 1, 5 ou un nombre choisi de minutes au même minuteur OBS. Saisissez le mot de passe WebSocket OBS si l’authentification est activée; la page ne l’enregistre pas. Cette page sert de télécommande; ce n’est pas une incrustation Browser Source.
 
-Après avoir configuré et compilé le module OBS, générez une archive ZIP portable pour la plateforme actuelle :
+Après avoir configuré et compilé le module OBS pour la bonne famille OBS, créez son paquet d’installation :
 
 ```sh
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-Décompressez l’archive dans le dossier de plugins OBS indiqué plus haut. Chaque archive contient les sources correspondantes et la licence dans `source/`. CPack produit des archives portables; il ne crée pas d’installateurs MSI, PKG ou DEB signés.
+Sous Windows, CPack crée un installateur guidé et un fichier ZIP. Le dossier proposé par défaut est `%ProgramData%\obs-studio\plugins\CountdownStudio`; pour OBS portable, choisissez `<dossier OBS>\plugins\CountdownStudio` dans l’installateur. Utilisez la compilation `legacy` pour OBS 32 ou `modern` pour OBS 33+. Sous macOS et Linux, CPack crée une archive ZIP à extraire dans le dossier OBS correspondant indiqué plus haut. Chaque paquet contient les sources correspondantes et la licence dans `source/`. L’installateur Windows n’est pas signé.
 
 Pour OBS 32 portable, utilisez l’emplacement historique indiqué pour cette version; pour OBS 33+, placez le dossier du plugin au format moderne dans le dossier portable OBS. Pour OBS Flatpak, utilisez un paquet compatible avec cet environnement Flatpak. Consultez le [guide officiel des plugins OBS](https://obsproject.com/kb/plugins-guide) et le [guide de migration des dossiers de plugins](https://obsproject.com/kb/legacy-plugin-locations) pour les emplacements par plateforme.
 
