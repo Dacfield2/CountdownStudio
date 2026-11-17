@@ -28,7 +28,7 @@ cmake --build build-obs --config Release
 ctest --test-dir build-obs -C Release --output-on-failure
 ```
 
-The exact SDK setup and packaging steps depend on the OBS version and target platform. This bootstrap does not bundle OBS or its SDK.
+The compatibility target starts at OBS 32. Build separate plugin packages against the matching OBS SDK family: OBS 32 rejects plugins built for a newer OBS release. OBS 32 uses the legacy layout, while OBS 33 and newer use the modern layout. Select it with `-DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT=legacy` or `modern`. The exact SDK setup still depends on the target platform. This project does not bundle OBS or its SDK.
 
 To create a portable ZIP from the install rules for the current platform, run:
 
@@ -68,7 +68,7 @@ cmake --build build-obs --config Release
 ctest --test-dir build-obs -C Release --output-on-failure
 ```
 
-La préparation exacte du SDK et l’empaquetage dépendent de la version d’OBS et de la plateforme cible. Ce projet initial ne fournit ni OBS ni son SDK.
+L’objectif de compatibilité commence avec OBS 32. Compilez des paquets distincts avec la famille de SDK OBS correspondante : OBS 32 refuse les plugins compilés pour une version OBS plus récente. OBS 32 utilise l’ancien format, OBS 33 et les versions ultérieures le format moderne. Sélectionnez-le avec `-DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT=legacy` ou `modern`. La préparation exacte du SDK dépend aussi de la plateforme. Ce projet ne fournit ni OBS ni son SDK.
 
 Pour créer une archive ZIP portable à partir des règles d’installation de la plateforme actuelle :
 
@@ -79,3 +79,4 @@ cpack --config build-obs/CPackConfig.cmake
 L’archive contient le module OBS, les fichiers de langue, la page de commande navigateur, les sources correspondantes et la licence. Ce n’est pas un installateur signé propre à une plateforme.
 
 Les commandes d’installation par plateforme et les étapes pour ajouter la source dans OBS figurent dans le [README bilingue](../README.md).
+

@@ -5,6 +5,14 @@ project(CountdownStudio VERSION 0.1.0 LANGUAGES CXX)
 include(CTest)
 
 option(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN "Build the OBS Studio module (requires an OBS development package)" OFF)
+set(COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT "modern" CACHE STRING
+    "OBS plugin install layout: legacy (OBS 32) or modern (OBS 33+)")
+set_property(CACHE COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT PROPERTY STRINGS legacy modern)
+
+if(NOT COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT STREQUAL "legacy"
+   AND NOT COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT STREQUAL "modern")
+    message(FATAL_ERROR "COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT must be 'legacy' or 'modern'.")
+endif()
 
 add_library(countdownstudio_core STATIC
     src/core/countdown.cpp
@@ -53,11 +61,11 @@ if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
         )
         install(TARGETS countdownstudio BUNDLE DESTINATION ".")
         install(DIRECTORY data/ DESTINATION "CountdownStudio.plugin/Contents/Resources")
-    elseif(WIN32)
-        install(TARGETS countdownstudio RUNTIME DESTINATION ".")
+    elseif(COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT STREQUAL "legacy")
+        install(TARGETS countdownstudio RUNTIME DESTINATION "bin/64bit" LIBRARY DESTINATION "bin/64bit")
         install(DIRECTORY data/ DESTINATION "data")
     else()
-        install(TARGETS countdownstudio LIBRARY DESTINATION "bin/64bit")
+        install(TARGETS countdownstudio RUNTIME DESTINATION "." LIBRARY DESTINATION ".")
         install(DIRECTORY data/ DESTINATION "data")
     endif()
 
@@ -75,7 +83,7 @@ endif()
 set(CPACK_PACKAGE_NAME "CountdownStudio")
 set(CPACK_PACKAGE_VENDOR "Dacfield2")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_FILE_NAME "CountdownStudio-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_PACKAGE_FILE_NAME "CountdownStudio-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${COUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT}")
 set(CPACK_GENERATOR "ZIP")
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 include(CPack)
@@ -87,3 +95,4 @@ if(BUILD_TESTING)
     set_target_properties(countdownstudio_tests PROPERTIES CXX_EXTENSIONS OFF)
     add_test(NAME countdownstudio_core COMMAND countdownstudio_tests)
 endif()
+
