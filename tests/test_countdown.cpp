@@ -1,0 +1,105 @@
+#include "countdownstudio/countdown.hpp"
+
+#include <functional>
+#include <iostream>
+#include <string_view>
+
+using countdownstudio::Countdown;
+using namespace std::chrono_literals;
+
+namespace {
+
+int failures = 0;
+
+void check(bool condition, std::string_view message)
+{
+    if (!condition) {
+        ++failures;
+        std::cerr << "FAIL: " << message << '\n';
+    }
+}
+
+void run(std::string_view name, const std::function<void()> &test)
+{
+    const int before = failures;
+    test();
+    if (failures == before) {
+        std::cout << "PASS: " << name << '\n';
+    }
+}
+
+void idle_countdown_reports_full_duration()
+{
+    const auto start = Countdown::Clock::time_point{} + 10s;
+    const Countdown timer{90s};
+    check(timer.state(start) == Countdown::State::idle, "new timer should be idle");
+    check(timer.remaining(start) == 90s, "idle timer should report its full duration");
+}
+
+void countdown_runs_to_zero()
+{
+    const auto start = Countdown::Clock::time_point{} + 10s;
+    Countdown timer{5s};
+    timer.start(start);
+
+    check(timer.state(start + 2s) == Countdown::State::running, "timer should run before its deadline");
+    check(timer.remaining(start + 2s) == 3s, "remaining duration should decrease while running");
+    check(timer.state(start + 5s) == Countdown::State::finished, "timer should finish at its deadline");
+    check(timer.remaining(start + 5s) == 0ms, "finished timer should report zero");
+}
+
+void pause_and_resume_preserve_remaining_time()
+{
+    const auto start = Countdown::Clock::time_point{} + 20s;
+    Countdown timer{10s};
+    timer.start(start);
+    timer.pause(start + 4s);
+
+    check(timer.state(start + 4s) == Countdown::State::paused, "pause should change the state");
+    check(timer.remaining(start + 100s) == 6s, "paused timer should keep its remaining duration");
+
+    timer.resume(start + 100s);
+    check(timer.state(start + 100s) == Countdown::State::running, "resume should restart the timer");
+    check(timer.remaining(start + 103s) == 3s, "resumed deadline should use the saved remainder");
+}
+
+void reset_restarts_with_a_new_duration()
+{
+    const auto start = Countdown::Clock::time_point{} + 30s;
+    Countdown timer{10s};
+    timer.start(start);
+    timer.reset(2s);
+
+    check(timer.state(start + 1s) == Countdown::State::idle, "reset should return to idle");
+    check(timer.remaining(start + 1s) == 2s, "reset should store the new duration");
+    timer.start(start + 1s);
+    check(timer.remaining(start + 2s) == 1s, "new duration should count down after start");
+}
+
+void zero_duration_finishes_immediately()
+{
+    const auto start = Countdown::Clock::time_point{} + 40s;
+    Countdown timer{0ms};
+    timer.start(start);
+    check(timer.state(start) == Countdown::State::finished, "zero duration should finish immediately");
+    check(timer.remaining(start) == 0ms, "zero duration should report zero");
+}
+
+} // namespace
+
+int main()
+{
+    run("idle duration", idle_countdown_reports_full_duration);
+    run("running countdown", countdown_runs_to_zero);
+    run("pause and resume", pause_and_resume_preserve_remaining_time);
+    run("reset duration", reset_restarts_with_a_new_duration);
+    run("zero duration", zero_duration_finishes_immediately);
+
+    if (failures != 0) {
+        std::cerr << failures << " check(s) failed\n";
+        return 1;
+    }
+
+    std::cout << "All countdown core checks passed.\n";
+    return 0;
+}
