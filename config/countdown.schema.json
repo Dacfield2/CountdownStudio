@@ -5,79 +5,24 @@
   "additionalProperties": false,
   "required": [
     "schemaVersion",
-    "title",
     "durationSeconds",
-    "locale",
-    "timeFormat",
-    "displayMode",
-    "targetTimeUtc",
-    "colors"
+    "autoStart",
+    "showBackground"
   ],
   "properties": {
     "schemaVersion": {
       "const": 1
     },
-    "title": {
-      "type": "string",
-      "maxLength": 120
-    },
     "durationSeconds": {
       "type": "integer",
-      "minimum": 0,
-      "maximum": 31536000
+      "minimum": 1,
+      "maximum": 604800
     },
-    "locale": {
-      "type": "string",
-      "enum": [
-        "system",
-        "en-US",
-        "fr-FR"
-      ]
+    "autoStart": {
+      "type": "boolean"
     },
-    "timeFormat": {
-      "type": "string",
-      "enum": [
-        "HH:MM:SS",
-        "MM:SS",
-        "SS"
-      ]
-    },
-    "displayMode": {
-      "type": "string",
-      "enum": [
-        "countdown",
-        "clock"
-      ]
-    },
-    "targetTimeUtc": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "date-time"
-    },
-    "colors": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "foreground",
-        "background",
-        "accent"
-      ],
-      "properties": {
-        "foreground": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "background": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
-        },
-        "accent": {
-          "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$"
-        }
-      }
+    "showBackground": {
+      "type": "boolean"
     }
   }
 }

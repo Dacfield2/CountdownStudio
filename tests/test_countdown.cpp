@@ -85,6 +85,27 @@ void zero_duration_finishes_immediately()
     check(timer.remaining(start) == 0ms, "zero duration should report zero");
 }
 
+void starting_after_finish_restarts_the_duration()
+{
+    const auto start = Countdown::Clock::time_point{} + 50s;
+    Countdown timer{2s};
+    timer.start(start);
+    check(timer.state(start + 2s) == Countdown::State::finished, "timer should finish before restart");
+
+    timer.start(start + 10s);
+    check(timer.state(start + 10s) == Countdown::State::running, "start should restart a finished timer");
+    check(timer.remaining(start + 11s) == 1s, "restarted timer should count from the full duration");
+}
+
+void negative_duration_is_clamped_to_zero()
+{
+    const auto now = Countdown::Clock::time_point{} + 60s;
+    Countdown timer{-1s};
+    check(timer.remaining(now) == 0ms, "negative duration should be clamped to zero");
+    timer.start(now);
+    check(timer.state(now) == Countdown::State::finished, "clamped zero duration should finish immediately");
+}
+
 } // namespace
 
 int main()
@@ -94,6 +115,8 @@ int main()
     run("pause and resume", pause_and_resume_preserve_remaining_time);
     run("reset duration", reset_restarts_with_a_new_duration);
     run("zero duration", zero_duration_finishes_immediately);
+    run("restart after finish", starting_after_finish_restarts_the_duration);
+    run("negative duration", negative_duration_is_clamped_to_zero);
 
     if (failures != 0) {
         std::cerr << failures << " check(s) failed\n";

@@ -1,14 +1,6 @@
 {
   "schemaVersion": 1,
-  "title": "Starting soon",
   "durationSeconds": 600,
-  "locale": "system",
-  "timeFormat": "HH:MM:SS",
-  "displayMode": "countdown",
-  "targetTimeUtc": null,
-  "colors": {
-    "foreground": "#FFFFFF",
-    "background": "#00000000",
-    "accent": "#6C63FF"
-  }
+  "autoStart": true,
+  "showBackground": false
 }

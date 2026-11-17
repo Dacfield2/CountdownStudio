@@ -30,6 +30,8 @@ ctest --test-dir build-obs -C Release --output-on-failure
 
 The exact SDK setup and packaging steps depend on the OBS version and target platform. This bootstrap does not bundle OBS or its SDK.
 
+Platform install commands and the steps for adding the source in OBS are documented in the bilingual [README](../README.md).
+
 ## Français
 
 ### Prérequis
@@ -59,3 +61,5 @@ ctest --test-dir build-obs -C Release --output-on-failure
 ```
 
 La préparation exacte du SDK et l’empaquetage dépendent de la version d’OBS et de la plateforme cible. Ce projet initial ne fournit ni OBS ni son SDK.
+
+Les commandes d’installation par plateforme et les étapes pour ajouter la source dans OBS figurent dans le [README bilingue](../README.md).
