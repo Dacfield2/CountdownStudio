@@ -49,7 +49,7 @@ cmake --install build-obs --prefix "$HOME/.config/obs-studio/plugins/CountdownSt
 
 Then fully restart OBS. In **Sources**, select **+ → Countdown Studio Timer**. Set the duration and choose whether it starts automatically or shows a translucent black background. Use **Start / Resume**, **Pause**, and **Restart countdown** in the source properties to control it. While it runs, **Add 1 minute** and **Add 5 minutes** extend the current countdown immediately; they also work while paused, and adding time after zero starts the timer again. The automatic format shows `MM:SS` below one hour and `HH:MM:SS` from one hour. Transform it in the scene to fit your canvas.
 
-Open **Docks → Countdown Studio Controls** for the same controls inside OBS. In the source properties you can also choose text/background colors and transparency, text size, and automatic, `MM:SS`, or `HH:MM:SS` formatting.
+Open **Docks → Countdown Studio Controls** for the same controls inside OBS. In the source properties you can also choose the font and style, text/background colors and transparency, text size, and automatic, `MM:SS`, or `HH:MM:SS` formatting.
 
 ### Browser controls and portable package
 
@@ -131,7 +131,7 @@ cmake --install build-obs --prefix "$HOME/.config/obs-studio/plugins/CountdownSt
 
 Redémarrez complètement OBS. Dans **Sources**, choisissez **+ → Minuteur Countdown Studio**. Réglez la durée et indiquez si le minuteur démarre automatiquement ou affiche un fond noir translucide. Les boutons **Démarrer / reprendre**, **Mettre en pause** et **Réinitialiser le compte à rebours** dans les propriétés de la source le contrôlent. Pendant le décompte, **Ajouter 1 minute** et **Ajouter 5 minutes** prolongent immédiatement le temps restant; ils fonctionnent aussi en pause, et ajoutés après zéro, ils relancent le minuteur. Le format automatique affiche `MM:SS` sous une heure et `HH:MM:SS` à partir d’une heure. Transformez la source dans la scène pour l’adapter au canevas.
 
-Ouvrez **Docks → Commandes Countdown Studio** pour retrouver les commandes dans OBS. Dans les propriétés de la source, vous pouvez aussi choisir la couleur et la transparence du texte et du fond, la taille du texte ainsi que le format automatique, `MM:SS` ou `HH:MM:SS`.
+Ouvrez **Docks → Commandes Countdown Studio** pour retrouver les commandes dans OBS. Dans les propriétés de la source, vous pouvez aussi choisir la police et le style, la couleur et la transparence du texte et du fond, la taille du texte ainsi que le format automatique, `MM:SS` ou `HH:MM:SS`.
 
 ### Commandes navigateur et archive portable
 

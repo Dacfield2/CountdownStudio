@@ -8,8 +8,14 @@
 #include <obs-properties.h>
 #include <obs-source.h>
 
+#include <QColor>
+#include <QFont>
+#include <QFontMetricsF>
+#include <QImage>
+#include <QPainter>
+#include <QString>
+
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -31,26 +37,6 @@ constexpr int64_t kMaximumDurationSeconds = 604800;
 constexpr std::size_t kChannels = 4;
 constexpr uint32_t kDefaultTextColor = 0xFFFFFFFF;
 constexpr uint32_t kDefaultBackgroundColor = 0x99000000;
-
-using Glyph = std::array<uint8_t, 7>;
-
-Glyph glyph_for(char character)
-{
-    switch (character) {
-    case '0': return {0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110};
-    case '1': return {0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110};
-    case '2': return {0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111};
-    case '3': return {0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110};
-    case '4': return {0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010};
-    case '5': return {0b11111, 0b10000, 0b10000, 0b11110, 0b00001, 0b00001, 0b11110};
-    case '6': return {0b01110, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110};
-    case '7': return {0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000};
-    case '8': return {0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110};
-    case '9': return {0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b01110};
-    case ':': return {0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000};
-    default: return {};
-    }
-}
 
 int64_t read_duration(obs_data_t *settings)
 {
@@ -88,11 +74,13 @@ public:
           show_background_(obs_data_get_bool(settings, "show_background")),
           text_color_(static_cast<uint32_t>(obs_data_get_int(settings, "text_color"))),
           background_color_(static_cast<uint32_t>(obs_data_get_int(settings, "background_color"))),
-          font_size_percent_(static_cast<int>(obs_data_get_int(settings, "font_size_percent"))),
-          time_format_(static_cast<int>(obs_data_get_int(settings, "time_format"))),
+          font_size_percent_(
+              static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100))),
+          time_format_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2))),
           timer_(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_})),
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
+        read_font_settings(settings);
         if (auto_start_) {
             timer_.start();
         }
@@ -119,6 +107,7 @@ public:
         font_size_percent_ = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
         time_format_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
+        read_font_settings(settings);
 
         if (new_duration != duration_seconds_ || new_auto_start != auto_start_) {
             duration_seconds_ = new_duration;
@@ -203,62 +192,61 @@ private:
         render_pixels_locked();
     }
 
-    void set_pixel_block(int x, int y, int scale, uint32_t color)
+    void read_font_settings(obs_data_t *settings)
     {
-        const auto red = static_cast<uint8_t>((color >> 16) & 0xFF);
-        const auto green = static_cast<uint8_t>((color >> 8) & 0xFF);
-        const auto blue = static_cast<uint8_t>(color & 0xFF);
-        const auto alpha = static_cast<uint8_t>((color >> 24) & 0xFF);
-        for (int row = 0; row < scale; ++row) {
-            for (int column = 0; column < scale; ++column) {
-                const auto pixel_x = static_cast<std::size_t>(x + column);
-                const auto pixel_y = static_cast<std::size_t>(y + row);
-                const auto offset = (pixel_y * kCanvasWidth + pixel_x) * kChannels;
-                pixels_[offset] = red;
-                pixels_[offset + 1] = green;
-                pixels_[offset + 2] = blue;
-                pixels_[offset + 3] = alpha;
-            }
+        obs_data_t *font = obs_data_get_obj(settings, "font");
+        if (font == nullptr) {
+            return;
         }
+
+        const char *face = obs_data_get_string(font, "face");
+        const char *style = obs_data_get_string(font, "style");
+        if (face != nullptr && face[0] != '\0') {
+            font_face_ = face;
+        }
+        if (style != nullptr) {
+            font_style_ = style;
+        }
+        font_size_points_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(font, "size"), 1, 1000));
+        font_flags_ = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
+        obs_data_release(font);
     }
 
     void render_pixels_locked()
     {
-        std::fill(pixels_.begin(), pixels_.end(), 0);
-        if (show_background_) {
-            const auto red = static_cast<uint8_t>((background_color_ >> 16) & 0xFF);
-            const auto green = static_cast<uint8_t>((background_color_ >> 8) & 0xFF);
-            const auto blue = static_cast<uint8_t>(background_color_ & 0xFF);
-            const auto alpha = static_cast<uint8_t>((background_color_ >> 24) & 0xFF);
-            for (std::size_t offset = 0; offset < pixels_.size(); offset += kChannels) {
-                pixels_[offset] = red;
-                pixels_[offset + 1] = green;
-                pixels_[offset + 2] = blue;
-                pixels_[offset + 3] = alpha;
-            }
-        }
-
         const auto text = format_remaining(timer_.remaining(), time_format_);
-        const int text_units = static_cast<int>(text.size()) * 6 - 1;
-        const int scale_x = (static_cast<int>(kCanvasWidth) - 2 * kMargin) / text_units;
-        const int scale_y = (static_cast<int>(kCanvasHeight) - 2 * kMargin) / 7;
-        const int scale = std::max(1, std::min(scale_x, scale_y) * font_size_percent_ / 100);
-        const int text_width = text_units * scale;
-        const int origin_x = (static_cast<int>(kCanvasWidth) - text_width) / 2;
-        const int origin_y = (static_cast<int>(kCanvasHeight) - 7 * scale) / 2;
+        QImage image(pixels_.data(), static_cast<int>(kCanvasWidth), static_cast<int>(kCanvasHeight),
+                     static_cast<int>(kCanvasWidth * kChannels), QImage::Format_RGBA8888);
+        image.fill(Qt::transparent);
 
-        for (std::size_t index = 0; index < text.size(); ++index) {
-            const auto glyph = glyph_for(text[index]);
-            const int glyph_x = origin_x + static_cast<int>(index) * 6 * scale;
-            for (std::size_t row = 0; row < glyph.size(); ++row) {
-                for (int column = 0; column < 5; ++column) {
-                    if ((glyph[row] & (1U << (4 - column))) != 0) {
-                        set_pixel_block(glyph_x + column * scale, origin_y + static_cast<int>(row) * scale, scale,
-                                        text_color_);
-                    }
-                }
-            }
+        QPainter painter(&image);
+        painter.setRenderHint(QPainter::TextAntialiasing, true);
+        if (show_background_) {
+            painter.fillRect(image.rect(), QColor::fromRgba(background_color_));
         }
+
+        QFont font(QString::fromUtf8(font_face_.c_str()));
+        font.setStyleName(QString::fromUtf8(font_style_.c_str()));
+        font.setBold((font_flags_ & OBS_FONT_BOLD) != 0);
+        font.setItalic((font_flags_ & OBS_FONT_ITALIC) != 0);
+        font.setUnderline((font_flags_ & OBS_FONT_UNDERLINE) != 0);
+        font.setStrikeOut((font_flags_ & OBS_FONT_STRIKEOUT) != 0);
+        font.setPointSize(font_size_points_);
+
+        const QString display_text = QString::fromStdString(text);
+        const QFontMetricsF initial_metrics(font);
+        const QRectF initial_bounds = initial_metrics.tightBoundingRect(display_text);
+        const double width_limit = static_cast<double>(kCanvasWidth - 2 * kMargin);
+        const double height_limit = static_cast<double>(kCanvasHeight - 2 * kMargin);
+        const double width_scale = width_limit / std::max(1.0, initial_bounds.width());
+        const double height_scale = height_limit / std::max(1.0, initial_bounds.height());
+        const double fit_scale = std::min({1.0, width_scale, height_scale}) * font_size_percent_ / 100.0;
+        font.setPointSizeF(std::max(1.0, font.pointSizeF() * fit_scale));
+
+        painter.setFont(font);
+        painter.setPen(QColor::fromRgba(text_color_));
+        painter.drawText(image.rect(), Qt::AlignCenter, display_text);
+        painter.end();
 
         last_display_seconds_ = display_seconds(timer_.remaining());
         texture_dirty_ = true;
@@ -271,6 +259,10 @@ private:
     uint32_t background_color_;
     int font_size_percent_;
     int time_format_;
+    std::string font_face_{"Arial"};
+    std::string font_style_{"Regular"};
+    int font_size_points_{144};
+    uint32_t font_flags_{0};
     Countdown timer_;
     std::vector<uint8_t> pixels_;
     int64_t last_display_seconds_{std::numeric_limits<int64_t>::min()};
@@ -321,6 +313,14 @@ const char *source_name(void *)
 
 void source_defaults(obs_data_t *settings)
 {
+    obs_data_t *font = obs_data_create();
+    obs_data_set_default_string(font, "face", "Arial");
+    obs_data_set_default_string(font, "style", "Regular");
+    obs_data_set_default_int(font, "size", 144);
+    obs_data_set_default_int(font, "flags", 0);
+    obs_data_set_default_obj(settings, "font", font);
+    obs_data_release(font);
+
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
@@ -369,6 +369,7 @@ obs_properties_t *source_properties(void *data)
     obs_properties_add_bool(properties, "show_background", obs_module_text("Settings.ShowBackground"));
     obs_properties_add_color_alpha(properties, "text_color", obs_module_text("Settings.TextColor"));
     obs_properties_add_color_alpha(properties, "background_color", obs_module_text("Settings.BackgroundColor"));
+    obs_properties_add_font(properties, "font", obs_module_text("Settings.Font"));
     obs_properties_add_int_slider(properties, "font_size_percent", obs_module_text("Settings.FontSize"), 25, 100, 1);
     auto *format = obs_properties_add_list(properties, "time_format", obs_module_text("Settings.TimeFormat"),
                                            OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);

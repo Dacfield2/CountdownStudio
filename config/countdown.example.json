@@ -5,6 +5,12 @@
   "showBackground": false,
   "textColor": "#FFFFFFFF",
   "backgroundColor": "#99000000",
+  "font": {
+    "face": "Arial",
+    "style": "Regular",
+    "size": 144,
+    "flags": 0
+  },
   "fontSizePercent": 100,
   "timeFormat": "automatic"
 }

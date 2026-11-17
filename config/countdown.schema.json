@@ -10,6 +10,7 @@
     "showBackground",
     "textColor",
     "backgroundColor",
+    "font",
     "fontSizePercent",
     "timeFormat"
   ],
@@ -37,6 +38,17 @@
       "type": "string",
       "pattern": "^#[0-9A-Fa-f]{8}$",
       "description": "ARGB hexadecimal color with alpha, for example #99000000."
+    },
+    "font": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["face", "style", "size", "flags"],
+      "properties": {
+        "face": { "type": "string", "minLength": 1 },
+        "style": { "type": "string" },
+        "size": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 15 }
+      }
     },
     "fontSizePercent": {
       "type": "integer",
