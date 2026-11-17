@@ -9,12 +9,13 @@ Countdown::Countdown(Duration duration) noexcept
 
 void Countdown::start(Clock::time_point now) noexcept
 {
-    if (state_ == State::paused) {
+    const auto current_state = state(now);
+    if (current_state == State::paused) {
         resume(now);
         return;
     }
 
-    if (state_ != State::idle && state_ != State::finished) {
+    if (current_state != State::idle && current_state != State::finished) {
         return;
     }
 
