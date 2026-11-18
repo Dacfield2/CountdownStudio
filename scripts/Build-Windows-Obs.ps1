@@ -149,6 +149,7 @@ Invoke-NativeCommand -Command 'cmake' -Arguments @(
     '-G', 'Visual Studio 18 2026',
     '-A', "x64,version=$sdkVersion",
     '-DOBS_CMAKE_VERSION:STRING=3.0.0',
+    '-DCMAKE_COMPILE_WARNING_AS_ERROR:BOOL=OFF',
     '-DENABLE_PLUGINS:BOOL=OFF',
     '-DENABLE_FRONTEND:BOOL=OFF',
     "-DOBS_VERSION_OVERRIDE:STRING=$ObsVersion",

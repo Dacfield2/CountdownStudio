@@ -27,7 +27,7 @@ pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 32.2.2
 pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 33.0.1
 ```
 
-The script downloads the matching OBS source and development dependencies, checks their SHA-256 hashes, builds the OBS development libraries and Countdown Studio, then creates and checks the NSIS installer and ZIP in `build-obs-<version>/packages/`. The GitHub workflow retries the NSIS installation up to three times if Chocolatey is temporarily unavailable.
+The script downloads the matching OBS source and development dependencies, checks their SHA-256 hashes, builds the OBS development libraries and Countdown Studio, then creates and checks the NSIS installer and ZIP in `build-obs-<version>/packages/`. The GitHub workflow retries the NSIS installation up to three times if Chocolatey is temporarily unavailable. The OBS dependency build disables OBS's warnings-as-errors setting for compatibility with OBS 32 and the current compiler; this does not change Countdown Studio's compiler settings.
 
 ### Install and use it in OBS
 
@@ -152,7 +152,7 @@ pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 32.2.2
 pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 33.0.1
 ```
 
-Le script télécharge les sources OBS et les dépendances de développement correspondantes, vérifie leurs empreintes SHA-256, compile les bibliothèques de développement OBS et Countdown Studio, puis crée et vérifie l’installateur NSIS et le ZIP dans `build-obs-<version>/packages/`. Le workflow GitHub réessaie jusqu’à trois fois l’installation de NSIS si Chocolatey est temporairement indisponible.
+Le script télécharge les sources OBS et les dépendances de développement correspondantes, vérifie leurs empreintes SHA-256, compile les bibliothèques de développement OBS et Countdown Studio, puis crée et vérifie l’installateur NSIS et le ZIP dans `build-obs-<version>/packages/`. Le workflow GitHub réessaie jusqu’à trois fois l’installation de NSIS si Chocolatey est temporairement indisponible. La compilation des dépendances OBS désactive l’option qui transforme les avertissements OBS en erreurs, pour rester compatible avec OBS 32 et le compilateur actuel; cela ne modifie pas les paramètres de compilation de Countdown Studio.
 
 ### Installer et utiliser le plugin dans OBS
 
