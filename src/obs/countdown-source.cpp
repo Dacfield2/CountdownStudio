@@ -46,6 +46,12 @@ int64_t read_duration(obs_data_t *settings)
                                kMaximumDurationSeconds);
 }
 
+std::string read_end_message(obs_data_t *settings)
+{
+    const char *message = obs_data_get_string(settings, "end_message");
+    return message != nullptr ? message : obs_module_text("Settings.DefaultEndMessage");
+}
+
 std::string format_remaining(Countdown::Duration remaining, int format)
 {
     const auto whole_seconds = std::chrono::ceil<std::chrono::seconds>(remaining).count();
@@ -79,6 +85,7 @@ public:
           font_size_percent_(
               static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100))),
           time_format_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2))),
+          end_message_(read_end_message(settings)),
           timer_(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_})),
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
@@ -112,6 +119,7 @@ public:
         font_size_percent_ = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
         time_format_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
+        end_message_ = read_end_message(settings);
         read_font_settings(settings);
 
         if (new_duration != duration_seconds_ || new_auto_start != auto_start_) {
@@ -256,7 +264,9 @@ private:
 
     void render_pixels_locked()
     {
-        const auto text = format_remaining(timer_.remaining(), time_format_);
+        const auto text = timer_.state() == Countdown::State::finished
+                              ? end_message_
+                              : format_remaining(timer_.remaining(), time_format_);
         QImage image(pixels_.data(), static_cast<int>(kCanvasWidth), static_cast<int>(kCanvasHeight),
                      static_cast<int>(kCanvasWidth * kChannels), QImage::Format_RGBA8888);
         image.fill(Qt::transparent);
@@ -305,6 +315,7 @@ private:
     uint32_t background_color_;
     int font_size_percent_;
     int time_format_;
+    std::string end_message_;
     std::string font_face_{"Arial"};
     std::string font_style_{"Regular"};
     std::string custom_font_path_;
@@ -378,6 +389,7 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "background_color", kDefaultBackgroundColor);
     obs_data_set_default_int(settings, "font_size_percent", 100);
     obs_data_set_default_int(settings, "time_format", 0);
+    obs_data_set_default_string(settings, "end_message", obs_module_text("Settings.DefaultEndMessage"));
 }
 
 bool start_clicked(obs_properties_t *, obs_property_t *, void *data)
@@ -428,15 +440,25 @@ obs_properties_t *source_properties(void *data)
     obs_property_list_add_int(format, obs_module_text("Format.Automatic"), 0);
     obs_property_list_add_int(format, "MM:SS", 1);
     obs_property_list_add_int(format, "HH:MM:SS", 2);
+    obs_properties_add_text(properties, "end_message", obs_module_text("Settings.EndMessage"), OBS_TEXT_DEFAULT);
 
     if (data != nullptr) {
-        obs_properties_add_button2(properties, "start", obs_module_text("Controls.Start"), start_clicked, data);
-        obs_properties_add_button2(properties, "pause", obs_module_text("Controls.Pause"), pause_clicked, data);
-        obs_properties_add_button2(properties, "restart", obs_module_text("Controls.Restart"), restart_clicked, data);
-        obs_properties_add_button2(properties, "add_minute", obs_module_text("Controls.AddMinute"),
-                                   add_minute_clicked, data);
-        obs_properties_add_button2(properties, "add_five_minutes", obs_module_text("Controls.AddFiveMinutes"),
-                                   add_five_minutes_clicked, data);
+        auto *start = obs_properties_add_button2(properties, "start", obs_module_text("Controls.Start"),
+                                                 start_clicked, data);
+        auto *pause = obs_properties_add_button2(properties, "pause", obs_module_text("Controls.Pause"),
+                                                 pause_clicked, data);
+        auto *restart = obs_properties_add_button2(properties, "restart", obs_module_text("Controls.Restart"),
+                                                   restart_clicked, data);
+        auto *add_minute = obs_properties_add_button2(properties, "add_minute", obs_module_text("Controls.AddMinute"),
+                                                      add_minute_clicked, data);
+        auto *add_five_minutes = obs_properties_add_button2(properties, "add_five_minutes",
+                                                            obs_module_text("Controls.AddFiveMinutes"),
+                                                            add_five_minutes_clicked, data);
+        obs_property_set_visible(start, false);
+        obs_property_set_visible(pause, false);
+        obs_property_set_visible(restart, false);
+        obs_property_set_visible(add_minute, false);
+        obs_property_set_visible(add_five_minutes, false);
     }
     return properties;
 }

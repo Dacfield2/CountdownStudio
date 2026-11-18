@@ -24,11 +24,11 @@ The repository is private, so you need repository access to download the files.
 
 1. In OBS, go to **Sources**, select **+**, then choose **Countdown Studio Timer**.
 2. Open the source **Properties** to set the starting time and appearance.
-3. Open **Docks → Countdown Studio Controls** to start, pause, or restart the timer. You can also add 1 minute, 5 minutes, or a custom number of minutes while it is running.
+3. Select the timer source in **Sources**. Use the small buttons beside **Properties** and **Filters** to start, pause, restart, or add 1 or 5 minutes. Select **+…** to add a custom number of minutes while the timer is running. If the buttons are unavailable, open **Docks → Countdown Studio Controls**.
 
 ### Change the look or use your own font
 
-Open the timer source **Properties** to change its font, size, colors, transparency, and time format.
+Open the timer source **Properties** to change its font, size, colors, transparency, time format, and the message shown when the countdown ends.
 
 To use your own font, choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. OBS uses that font from its current location on your computer; the plugin does not copy the font into the scene or installer.
 
@@ -70,11 +70,11 @@ Le dépôt est privé : vous devez y avoir accès pour télécharger les fichier
 
 1. Dans OBS, ouvrez **Sources**, cliquez sur **+**, puis choisissez **Minuteur Countdown Studio**.
 2. Ouvrez les **Propriétés** de la source pour régler la durée de départ et l’apparence.
-3. Ouvrez **Docks → Commandes Countdown Studio** pour démarrer, mettre en pause ou réinitialiser le minuteur. Vous pouvez aussi ajouter 1 minute, 5 minutes ou le nombre de minutes de votre choix pendant le décompte.
+3. Sélectionnez la source minuteur dans **Sources**. Utilisez les petits boutons à côté de **Propriétés** et **Filtres** pour démarrer, mettre en pause, réinitialiser ou ajouter 1 ou 5 minutes. Cliquez sur **+…** pour ajouter le nombre de minutes souhaité pendant le décompte. Si ces boutons ne sont pas disponibles, ouvrez **Docks → Commandes Countdown Studio**.
 
 ### Modifier l’apparence ou utiliser votre police
 
-Dans les **Propriétés** de la source, vous pouvez modifier la police, la taille, les couleurs, la transparence et le format du temps.
+Dans les **Propriétés** de la source, vous pouvez modifier la police, la taille, les couleurs, la transparence, le format du temps et le message affiché à la fin du décompte.
 
 Pour utiliser votre police, choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. OBS utilise le fichier à son emplacement actuel sur votre ordinateur; le plugin ne copie pas la police dans la scène ou l’installateur.
 

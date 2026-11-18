@@ -44,6 +44,7 @@ if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
         src/obs/plugin-main.cpp
         src/obs/countdown-source.cpp
         src/obs/countdown-dock.cpp
+        src/obs/countdown-toolbar.cpp
     )
     target_link_libraries(countdownstudio PRIVATE CountdownStudio::Core OBS::libobs OBS::obs-frontend-api Qt6::Core Qt6::Widgets)
     target_compile_features(countdownstudio PRIVATE cxx_std_20)

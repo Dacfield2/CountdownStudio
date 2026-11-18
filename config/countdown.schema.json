@@ -66,6 +66,10 @@
         "MM:SS",
         "HH:MM:SS"
       ]
+    },
+    "endMessage": {
+      "type": "string",
+      "description": "Optional text rendered when the countdown reaches zero."
     }
   }
 }
