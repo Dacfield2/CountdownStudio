@@ -86,6 +86,8 @@ cpack --config build-obs/CPackConfig.cmake
 
 On Windows, CPack creates a guided installer and a ZIP. The installer defaults to `%ProgramData%\obs-studio\plugins\CountdownStudio`; for portable OBS, choose `<OBS folder>\plugins\CountdownStudio` in the installer. Use the `legacy` build for OBS 32 or the `modern` build for OBS 33+. On macOS and Linux, CPack creates a ZIP; extract it into the matching OBS plugin folder shown above. Each package includes the corresponding source files and license under `source/`. The Windows installer is not code-signed. Prebuilt public downloads are not available yet; the repository is private and the current CI does not package the OBS module.
 
+The proposed per-platform release packages, public-ready file names, and verification steps are in [Release packaging](docs/RELEASE-PACKAGING.md).
+
 For OBS 32 portable installs, use the legacy plugin path documented for that OBS build; for OBS 33+ portable installs, place the modern plugin folder inside the OBS portable root. For Flatpak OBS, use a package compatible with that Flatpak runtime. See the [OBS Plugins Guide](https://obsproject.com/kb/plugins-guide) and [plugin location migration guide](https://obsproject.com/kb/legacy-plugin-locations) for platform-specific locations.
 
 ### Layout
@@ -189,6 +191,8 @@ cpack --config build-obs/CPackConfig.cmake
 ```
 
 Sous Windows, CPack crée un installateur guidé et un fichier ZIP. Le dossier proposé par défaut est `%ProgramData%\obs-studio\plugins\CountdownStudio`; pour OBS portable, choisissez `<dossier OBS>\plugins\CountdownStudio` dans l’installateur. Utilisez la compilation `legacy` pour OBS 32 ou `modern` pour OBS 33+. Sous macOS et Linux, CPack crée une archive ZIP à extraire dans le dossier OBS correspondant indiqué plus haut. Chaque paquet contient les sources correspondantes et la licence dans `source/`. L’installateur Windows n’est pas signé. Les téléchargements publics précompilés ne sont pas encore disponibles; le dépôt est privé et la CI actuelle ne crée pas encore de paquet du module OBS.
+
+Les formats de paquets proposés par système, les noms de fichiers prêts pour une publication publique et les étapes de vérification sont détaillés dans [Préparation des paquets de publication](docs/RELEASE-PACKAGING.md).
 
 Pour OBS 32 portable, utilisez l’emplacement historique indiqué pour cette version; pour OBS 33+, placez le dossier du plugin au format moderne dans le dossier portable OBS. Pour OBS Flatpak, utilisez un paquet compatible avec cet environnement Flatpak. Consultez le [guide officiel des plugins OBS](https://obsproject.com/kb/plugins-guide) et le [guide de migration des dossiers de plugins](https://obsproject.com/kb/legacy-plugin-locations) pour les emplacements par plateforme.
 
