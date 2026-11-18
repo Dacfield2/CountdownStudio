@@ -28,7 +28,7 @@ Under **Animation**, choose effects for the timer start and text changes. By def
 
 ### Compatibility
 
-Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are built for OBS 32 on Ubuntu 24.04 and OBS 33 on Ubuntu 26.04. Download them from the **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml); they are compiled but still need testing inside Linux OBS. macOS packages are not currently available.
+Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are built for OBS 32 on Ubuntu 24.04 and OBS 33 on Ubuntu 26.04. The workflow waits for the matching OBS SDK before packaging. Download the ZIP from the **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml); it is compiled but still needs testing inside Linux OBS. macOS packages are not currently available.
 
 ### Build from source
 
@@ -64,7 +64,7 @@ Dans **Animation**, choisissez les effets au démarrage et lors des changements 
 
 ### Compatibilité
 
-Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés pour OBS 32 sur Ubuntu 24.04 et OBS 33 sur Ubuntu 26.04. Téléchargez-les dans la section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml); ils sont compilés, mais leur chargement dans OBS sous Linux reste à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
+Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés pour OBS 32 sur Ubuntu 24.04 et OBS 33 sur Ubuntu 26.04. Le workflow attend le SDK OBS correspondant avant de créer le paquet. Téléchargez le ZIP dans la section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml); il est compilé, mais son chargement dans OBS sous Linux reste à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
 
 ### Compiler le projet
 

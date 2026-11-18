@@ -87,7 +87,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes software-properties-common
           sudo add-apt-repository --yes ppa:obsproject/obs-studio
-          sudo apt-get update
+          expected_major='${{ matrix.obs-major }}'
+          candidate_version=''
+          for attempt in 1 2 3 4 5; do
+            sudo apt-get -o Acquire::Retries=2 update || true
+            candidate_version="$(apt-cache policy obs-studio | awk '/Candidate:/ {print $2}')"
+            candidate_without_epoch="${candidate_version#*:}"
+            candidate_major="${candidate_without_epoch%%.*}"
+            if [[ "$candidate_major" == "$expected_major" ]]; then
+              echo "Found matching OBS package candidate: $candidate_version"
+              break
+            fi
+            echo "Waiting for OBS $expected_major SDK package (attempt $attempt/5; current candidate: $candidate_version)."
+            if [[ "$attempt" -eq 5 ]]; then
+              apt-cache policy obs-studio
+              echo "::error::No OBS $expected_major package candidate is available from the configured Ubuntu repositories."
+              exit 1
+            fi
+            sleep "$((attempt * 10))"
+          done
+
           sudo apt-get install --yes --no-install-recommends \
             obs-studio cmake ninja-build g++ pkg-config \
             qt6-base-dev qt6-base-private-dev
@@ -95,7 +114,6 @@ jobs:
           package_version="$(dpkg-query -W -f='${Version}' obs-studio)"
           version_without_epoch="${package_version#*:}"
           installed_major="${version_without_epoch%%.*}"
-          expected_major='${{ matrix.obs-major }}'
           echo "Installed OBS package: $package_version"
           if [[ "$installed_major" != "$expected_major" ]]; then
             echo "Expected OBS $expected_major development files, got OBS $installed_major." >&2
