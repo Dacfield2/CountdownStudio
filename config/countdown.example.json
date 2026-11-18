@@ -14,5 +14,9 @@
   "customFontFile": "",
   "fontSizePercent": 100,
   "timeFormat": "automatic",
-  "endMessage": "Time's up!"
+  "endMessage": "Time's up!",
+  "startAnimation": "fade",
+  "changeAnimation": "fade",
+  "animationDurationMs": 350,
+  "animationEasing": "ease-out"
 }

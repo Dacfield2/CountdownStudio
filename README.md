@@ -32,6 +32,10 @@ Open the timer source **Properties** to change its font, size, colors, transpare
 
 To use your own font, choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. OBS uses that font from its current location on your computer; the plugin does not copy the font into the scene or installer.
 
+### Animate the timer text
+
+In the source **Properties**, open **Animation**. Choose separate effects for when the timer starts and whenever its displayed text changes. Text changes include each second and the final message. Available effects are fade, slide up, slide left, zoom, bounce, pulse, reveal, and shake. Set the transition duration and easing curve there too. All animation is rendered by the native OBS plugin.
+
 ### Compatibility
 
 Windows installers are provided for OBS 32 and OBS 33. The plugin has not yet been verified inside OBS on macOS or Linux, so installers for those systems are not available yet.
@@ -77,6 +81,10 @@ Le dépôt est privé : vous devez y avoir accès pour télécharger les fichier
 Dans les **Propriétés** de la source, vous pouvez modifier la police, la taille, les couleurs, la transparence, le format du temps et le message affiché à la fin du décompte.
 
 Pour utiliser votre police, choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. OBS utilise le fichier à son emplacement actuel sur votre ordinateur; le plugin ne copie pas la police dans la scène ou l’installateur.
+
+### Animer le texte du minuteur
+
+Dans les **Propriétés** de la source, ouvrez **Animation**. Choisissez un effet pour le démarrage du minuteur et un autre pour chaque changement du texte affiché. Cela inclut chaque seconde et le message final. Effets disponibles : fondu, glissement vers le haut ou la gauche, zoom, rebond, pulsation, révélation et secousse. Réglez aussi la durée et la courbe d’accélération. Toute l’animation est rendue par le plugin OBS natif.
 
 ### Compatibilité
 

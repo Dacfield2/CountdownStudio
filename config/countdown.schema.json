@@ -70,6 +70,23 @@
     "endMessage": {
       "type": "string",
       "description": "Optional text rendered when the countdown reaches zero."
+    },
+    "startAnimation": {
+      "type": "string",
+      "enum": ["none", "fade", "slide-up", "slide-left", "zoom", "bounce", "pulse", "reveal", "shake"]
+    },
+    "changeAnimation": {
+      "type": "string",
+      "enum": ["none", "fade", "slide-up", "slide-left", "zoom", "bounce", "pulse", "reveal", "shake"]
+    },
+    "animationDurationMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 3000
+    },
+    "animationEasing": {
+      "type": "string",
+      "enum": ["linear", "ease-out", "ease-in-out"]
     }
   }
 }
