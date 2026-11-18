@@ -89,7 +89,7 @@ Open **Docks → Countdown Studio Controls** for the native OBS control panel. I
 
 ### Use a custom font
 
-Open the timer source's **Properties**, then choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. Leave that field empty to use the font and style selected in **Font**. The chosen font is loaded locally by OBS; Countdown Studio stores its file path but does not copy the font into the scene or installer. Keep the file at that path. If you move the scene to another computer, install the same font there or select its local font file again. If the file cannot be loaded, the source falls back to the font selected in **Font**.
+Open the timer source's **Properties**, then choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. Leave that field empty to use the font and style selected in **Font**. The chosen font is loaded locally by OBS; Countdown Studio stores its file path but does not copy the font into the scene or installer. Keep the file at that path. If you move the scene to another computer, install the same font there or select its local font file again. If the file cannot be loaded, the source falls back to the font selected in **Font** and logs the failure in OBS.
 
 ### Installation package
 
@@ -214,7 +214,7 @@ Ouvrez **Docks → Commandes Countdown Studio** pour afficher le panneau natif. 
 
 ### Utiliser une police personnalisée
 
-Ouvrez les **Propriétés** de la source minuteur, puis choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. Laissez ce champ vide pour utiliser la police et le style choisis dans **Police**. OBS charge la police localement; Countdown Studio mémorise le chemin du fichier sans copier la police dans la scène ou l’installateur. Gardez le fichier à cet emplacement. Si vous déplacez la scène vers un autre ordinateur, installez-y la même police ou sélectionnez son fichier local. Si le chargement échoue, la source reprend la police choisie dans **Police**.
+Ouvrez les **Propriétés** de la source minuteur, puis choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. Laissez ce champ vide pour utiliser la police et le style choisis dans **Police**. OBS charge la police localement; Countdown Studio mémorise le chemin du fichier sans copier la police dans la scène ou l’installateur. Gardez le fichier à cet emplacement. Si vous déplacez la scène vers un autre ordinateur, installez-y la même police ou sélectionnez son fichier local. Si le chargement échoue, la source reprend la police choisie dans **Police** et consigne l’échec dans le journal OBS.
 
 ### Paquet d’installation
 

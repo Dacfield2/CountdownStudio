@@ -239,16 +239,14 @@ private:
         const QString file_path = QString::fromUtf8(custom_font_path_.c_str());
         const int font_id = QFontDatabase::addApplicationFont(file_path);
         if (font_id < 0) {
-            obs_log(LOG_WARNING, "[CountdownStudio] Could not load custom font file: %s",
-                    custom_font_path_.c_str());
+            blog(LOG_WARNING, "[CountdownStudio] Could not load custom font file: %s", custom_font_path_.c_str());
             return;
         }
 
         const QStringList families = QFontDatabase::applicationFontFamilies(font_id);
         if (families.isEmpty()) {
             QFontDatabase::removeApplicationFont(font_id);
-            obs_log(LOG_WARNING, "[CountdownStudio] No usable font family found in: %s",
-                    custom_font_path_.c_str());
+            blog(LOG_WARNING, "[CountdownStudio] No usable font family found in: %s", custom_font_path_.c_str());
             return;
         }
 
