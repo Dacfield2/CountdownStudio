@@ -30,7 +30,15 @@ jobs:
 
       - name: Install NSIS for CPack
         shell: pwsh
-        run: choco install nsis.install --version=3.12.0 --yes --no-progress
+        run: |
+          $attempt = 1
+          while ($attempt -le 3) {
+            choco install nsis.install --version=3.12.0 --yes --no-progress
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -lt 3) { Start-Sleep -Seconds ($attempt * 15) }
+            $attempt++
+          }
+          exit 1
 
       - name: Build and package OBS plugin
         shell: pwsh
