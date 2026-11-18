@@ -38,7 +38,7 @@ Windows installers are provided for OBS 32 and OBS 33. The plugin has not yet be
 
 ### Publish a release
 
-Maintainers can publish a version by pushing its matching Git tag (for example, `v0.1.0`). GitHub Actions builds the Windows packages and creates the Release when both builds succeed. If the tag was already pushed but publishing failed, open **Actions → Windows OBS packages → Run workflow**, choose `main`, enter the existing tag, and start the workflow again.
+Maintainers can publish a version by pushing its matching Git tag (for example, `v0.1.0`). GitHub Actions builds the Windows packages and creates the Release when both builds succeed. If the tag was already pushed but publishing failed, open **Actions → Windows OBS packages → Run workflow**, choose `main`, enter the existing tag, and start the workflow again. This rebuilds both packages before publishing.
 
 ### For developers
 
@@ -84,7 +84,7 @@ Des installateurs Windows sont fournis pour OBS 32 et OBS 33. Le plugin n’a pa
 
 ### Publier une version
 
-Les responsables du projet peuvent publier une version en poussant son étiquette Git correspondante (par exemple, `v0.1.0`). GitHub Actions compile les paquets Windows et crée la Release lorsque les deux compilations réussissent. Si l’étiquette a déjà été poussée mais que la publication a échoué, ouvrez **Actions → Windows OBS packages → Run workflow**, choisissez `main`, saisissez l’étiquette existante, puis relancez le workflow.
+Les responsables du projet peuvent publier une version en poussant son étiquette Git correspondante (par exemple, `v0.1.0`). GitHub Actions compile les paquets Windows et crée la Release lorsque les deux compilations réussissent. Si l’étiquette a déjà été poussée mais que la publication a échoué, ouvrez **Actions → Windows OBS packages → Run workflow**, choisissez `main`, saisissez l’étiquette existante, puis relancez le workflow. Les deux paquets seront recompilés avant la publication.
 
 ### Pour les développeurs
 
