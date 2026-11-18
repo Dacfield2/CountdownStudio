@@ -36,6 +36,10 @@ To use your own font, choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font f
 
 Windows installers are provided for OBS 32 and OBS 33. The plugin has not yet been verified inside OBS on macOS or Linux, so installers for those systems are not available yet.
 
+### Publish a release
+
+Maintainers can publish a version by pushing its matching Git tag (for example, `v0.1.0`). GitHub Actions builds the Windows packages and creates the Release when both builds succeed.
+
 ### For developers
 
 Build instructions and project details are in [Building](docs/BUILDING.md), [Architecture](docs/ARCHITECTURE.md), and [Release packaging](docs/RELEASE-PACKAGING.md).
@@ -77,6 +81,10 @@ Pour utiliser votre police, choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans 
 ### Compatibilité
 
 Des installateurs Windows sont fournis pour OBS 32 et OBS 33. Le plugin n’a pas encore été vérifié dans OBS sous macOS ou Linux; les installateurs pour ces systèmes ne sont donc pas disponibles.
+
+### Publier une version
+
+Les responsables du projet peuvent publier une version en poussant son étiquette Git correspondante (par exemple, `v0.1.0`). GitHub Actions compile les paquets Windows et crée la Release lorsque les deux compilations réussissent.
 
 ### Pour les développeurs
 
