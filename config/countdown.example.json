@@ -11,6 +11,7 @@
     "size": 144,
     "flags": 0
   },
+  "customFontFile": "",
   "fontSizePercent": 100,
   "timeFormat": "automatic"
 }

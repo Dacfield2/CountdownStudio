@@ -50,6 +50,10 @@
         "flags": { "type": "integer", "minimum": 0, "maximum": 15 }
       }
     },
+    "customFontFile": {
+      "type": "string",
+      "description": "Optional path to a TTF, OTF, or TTC font file. The file is loaded locally and is not bundled with a scene or plugin package."
+    },
     "fontSizePercent": {
       "type": "integer",
       "minimum": 25,

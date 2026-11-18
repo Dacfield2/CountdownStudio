@@ -10,10 +10,12 @@
 
 #include <QColor>
 #include <QFont>
+#include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QImage>
 #include <QPainter>
 #include <QString>
+#include <QStringList>
 
 #include <algorithm>
 #include <chrono>
@@ -89,6 +91,9 @@ public:
 
     ~CountdownSource()
     {
+        if (custom_font_id_ >= 0) {
+            QFontDatabase::removeApplicationFont(custom_font_id_);
+        }
         if (texture_ != nullptr) {
             obs_enter_graphics();
             gs_texture_destroy(texture_);
@@ -194,6 +199,9 @@ private:
 
     void read_font_settings(obs_data_t *settings)
     {
+        const char *custom_font_file = obs_data_get_string(settings, "custom_font_file");
+        load_custom_font(custom_font_file != nullptr ? custom_font_file : "");
+
         obs_data_t *font = obs_data_get_obj(settings, "font");
         if (font == nullptr) {
             return;
@@ -212,6 +220,42 @@ private:
         obs_data_release(font);
     }
 
+    void load_custom_font(const std::string &path)
+    {
+        if (path == custom_font_path_) {
+            return;
+        }
+
+        custom_font_path_ = path;
+        custom_font_family_.clear();
+        if (custom_font_id_ >= 0) {
+            QFontDatabase::removeApplicationFont(custom_font_id_);
+            custom_font_id_ = -1;
+        }
+        if (custom_font_path_.empty()) {
+            return;
+        }
+
+        const QString file_path = QString::fromUtf8(custom_font_path_.c_str());
+        const int font_id = QFontDatabase::addApplicationFont(file_path);
+        if (font_id < 0) {
+            obs_log(LOG_WARNING, "[CountdownStudio] Could not load custom font file: %s",
+                    custom_font_path_.c_str());
+            return;
+        }
+
+        const QStringList families = QFontDatabase::applicationFontFamilies(font_id);
+        if (families.isEmpty()) {
+            QFontDatabase::removeApplicationFont(font_id);
+            obs_log(LOG_WARNING, "[CountdownStudio] No usable font family found in: %s",
+                    custom_font_path_.c_str());
+            return;
+        }
+
+        custom_font_id_ = font_id;
+        custom_font_family_ = families.front().toUtf8().toStdString();
+    }
+
     void render_pixels_locked()
     {
         const auto text = format_remaining(timer_.remaining(), time_format_);
@@ -225,8 +269,12 @@ private:
             painter.fillRect(image.rect(), QColor::fromRgba(background_color_));
         }
 
-        QFont font(QString::fromUtf8(font_face_.c_str()));
-        font.setStyleName(QString::fromUtf8(font_style_.c_str()));
+        const bool use_custom_font = !custom_font_family_.empty();
+        const std::string &font_family = use_custom_font ? custom_font_family_ : font_face_;
+        QFont font(QString::fromUtf8(font_family.c_str()));
+        if (!use_custom_font) {
+            font.setStyleName(QString::fromUtf8(font_style_.c_str()));
+        }
         font.setBold((font_flags_ & OBS_FONT_BOLD) != 0);
         font.setItalic((font_flags_ & OBS_FONT_ITALIC) != 0);
         font.setUnderline((font_flags_ & OBS_FONT_UNDERLINE) != 0);
@@ -261,6 +309,9 @@ private:
     int time_format_;
     std::string font_face_{"Arial"};
     std::string font_style_{"Regular"};
+    std::string custom_font_path_;
+    std::string custom_font_family_;
+    int custom_font_id_{-1};
     int font_size_points_{144};
     uint32_t font_flags_{0};
     Countdown timer_;
@@ -321,6 +372,7 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_obj(settings, "font", font);
     obs_data_release(font);
 
+    obs_data_set_default_string(settings, "custom_font_file", "");
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
@@ -370,6 +422,8 @@ obs_properties_t *source_properties(void *data)
     obs_properties_add_color_alpha(properties, "text_color", obs_module_text("Settings.TextColor"));
     obs_properties_add_color_alpha(properties, "background_color", obs_module_text("Settings.BackgroundColor"));
     obs_properties_add_font(properties, "font", obs_module_text("Settings.Font"));
+    obs_properties_add_path(properties, "custom_font_file", obs_module_text("Settings.CustomFontFile"),
+                            OBS_PATH_FILE, "Font files (*.ttf *.otf *.ttc)", nullptr);
     obs_properties_add_int_slider(properties, "font_size_percent", obs_module_text("Settings.FontSize"), 25, 100, 1);
     auto *format = obs_properties_add_list(properties, "time_format", obs_module_text("Settings.TimeFormat"),
                                            OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
