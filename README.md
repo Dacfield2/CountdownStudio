@@ -22,13 +22,13 @@ If the source controls are not visible, open **Docks → Countdown Studio Contro
 
 ### Appearance and animation
 
-Set the font, size, colors, transparency, time format, and end message in the source properties. To use a custom font, select a `.ttf`, `.otf`, or `.ttc` file. Keep the file on your computer; the plugin uses it from its current location.
+Set the font, size, colors, transparency, time format, and end message in the source properties. To use a custom font, select a `.ttf`, `.otf`, or `.ttc` file. Keep the file on your computer; the plugin uses it from its current location. Turn on **Text antialiasing** for smoother edges, or turn it off for a sharper pixel look.
 
 Under **Animation**, choose effects for the timer start and text changes. By default, only changed digits animate, while unchanged digits and colons stay still. Turn off **Animate changed digits only** to animate the whole timer. Choose an effect, duration, easing, and digit stagger. The end message animates as a full text.
 
 ### Compatibility
 
-Windows x64 installers are available for OBS 32 and OBS 33 or newer. macOS and Linux packages are not currently available.
+Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are built for OBS 32 on Ubuntu 24.04 and OBS 33 on Ubuntu 26.04. Download them from the **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml); they are compiled but still need testing inside Linux OBS. macOS packages are not currently available.
 
 ### Build from source
 
@@ -58,13 +58,13 @@ Si les commandes ne sont pas visibles, ouvrez **Docks → Commandes Countdown St
 
 ### Apparence et animation
 
-Dans les propriétés de la source, réglez la police, la taille, les couleurs, la transparence, le format du temps et le message de fin. Pour utiliser une police personnalisée, choisissez un fichier `.ttf`, `.otf` ou `.ttc`. Gardez ce fichier sur votre ordinateur : le plugin l’utilise depuis son emplacement actuel.
+Dans les propriétés de la source, réglez la police, la taille, les couleurs, la transparence, le format du temps et le message de fin. Pour utiliser une police personnalisée, choisissez un fichier `.ttf`, `.otf` ou `.ttc`. Gardez ce fichier sur votre ordinateur : le plugin l’utilise depuis son emplacement actuel. Activez **Lissage des contours du texte (anticrénelage)** pour des bords plus doux, ou désactivez-le pour un rendu plus pixelisé.
 
 Dans **Animation**, choisissez les effets au démarrage et lors des changements de texte. Par défaut, seuls les chiffres modifiés s’animent; les autres chiffres et les deux-points restent fixes. Décochez **Animer uniquement les chiffres modifiés** pour animer tout le minuteur. Réglez l’effet, la durée, la courbe d’accélération et le décalage entre les chiffres. Le message de fin s’anime comme un texte complet.
 
 ### Compatibilité
 
-Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Les paquets macOS et Linux ne sont pas disponibles pour le moment.
+Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés pour OBS 32 sur Ubuntu 24.04 et OBS 33 sur Ubuntu 26.04. Téléchargez-les dans la section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml); ils sont compilés, mais leur chargement dans OBS sous Linux reste à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
 
 ### Compiler le projet
 

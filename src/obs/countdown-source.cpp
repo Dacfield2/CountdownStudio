@@ -87,6 +87,7 @@ public:
         : duration_seconds_(read_duration(settings)),
           auto_start_(obs_data_get_bool(settings, "auto_start")),
           show_background_(obs_data_get_bool(settings, "show_background")),
+          antialiasing_(obs_data_get_bool(settings, "antialiasing")),
           text_color_(static_cast<uint32_t>(obs_data_get_int(settings, "text_color"))),
           background_color_(static_cast<uint32_t>(obs_data_get_int(settings, "background_color"))),
           font_size_percent_(
@@ -134,6 +135,7 @@ public:
         const auto new_duration = read_duration(settings);
         const auto new_auto_start = obs_data_get_bool(settings, "auto_start");
         show_background_ = obs_data_get_bool(settings, "show_background");
+        antialiasing_ = obs_data_get_bool(settings, "antialiasing");
         text_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "text_color"));
         background_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "background_color"));
         font_size_percent_ = static_cast<int>(
@@ -374,7 +376,8 @@ private:
         image.fill(Qt::transparent);
 
         QPainter painter(&image);
-        painter.setRenderHint(QPainter::TextAntialiasing, true);
+        painter.setRenderHint(QPainter::Antialiasing, antialiasing_);
+        painter.setRenderHint(QPainter::TextAntialiasing, antialiasing_);
         if (show_background_) {
             painter.fillRect(image.rect(), qcolor_from_obs_rgba(background_color_));
         }
@@ -710,6 +713,7 @@ private:
     int64_t duration_seconds_;
     bool auto_start_;
     bool show_background_;
+    bool antialiasing_;
     uint32_t text_color_;
     uint32_t background_color_;
     int font_size_percent_;
@@ -796,6 +800,7 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
+    obs_data_set_default_bool(settings, "antialiasing", true);
     obs_data_set_default_int(settings, "text_color", kDefaultTextColor);
     obs_data_set_default_int(settings, "background_color", kDefaultBackgroundColor);
     obs_data_set_default_int(settings, "font_size_percent", 100);
@@ -846,6 +851,7 @@ obs_properties_t *source_properties(void *data)
                            static_cast<int>(kMaximumDurationSeconds), 1);
     obs_properties_add_bool(properties, "auto_start", obs_module_text("Settings.AutoStart"));
     obs_properties_add_bool(properties, "show_background", obs_module_text("Settings.ShowBackground"));
+    obs_properties_add_bool(properties, "antialiasing", obs_module_text("Settings.Antialiasing"));
     obs_properties_add_color_alpha(properties, "text_color", obs_module_text("Settings.TextColor"));
     obs_properties_add_color_alpha(properties, "background_color", obs_module_text("Settings.BackgroundColor"));
     obs_properties_add_font(properties, "font", obs_module_text("Settings.Font"));

@@ -1,4 +1,4 @@
-name: Windows OBS packages
+name: OBS Studio packages
 
 on:
   push:
@@ -60,10 +60,84 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  build-linux:
+    name: ${{ matrix.family }} / Linux x64
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - family: OBS32
+            obs-major: '32'
+            runner: ubuntu-24.04
+            layout: legacy
+          - family: OBS33
+            obs-major: '33'
+            runner: ubuntu-26.04
+            layout: modern
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install OBS and development packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes software-properties-common
+          sudo add-apt-repository --yes ppa:obsproject/obs-studio
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            obs-studio cmake ninja-build g++ pkg-config \
+            qt6-base-dev qt6-base-private-dev
+
+          package_version="$(dpkg-query -W -f='${Version}' obs-studio)"
+          version_without_epoch="${package_version#*:}"
+          installed_major="${version_without_epoch%%.*}"
+          expected_major='${{ matrix.obs-major }}'
+          echo "Installed OBS package: $package_version"
+          if [[ "$installed_major" != "$expected_major" ]]; then
+            echo "Expected OBS $expected_major development files, got OBS $installed_major." >&2
+            exit 1
+          fi
+
+      - name: Build and package OBS plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="build-obs-${{ matrix.family }}-linux"
+          cmake -S . -B "$build_dir" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCOUNTDOWNSTUDIO_BUILD_OBS_PLUGIN=ON \
+            -DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT='${{ matrix.layout }}'
+          cmake --build "$build_dir" --parallel 2
+          test -f "$build_dir/CountdownStudio.so"
+          package_dir="$build_dir/packages"
+          mkdir -p "$package_dir"
+          cpack --config "$build_dir/CPackConfig.cmake" -B "$package_dir"
+          mapfile -t packages < <(find "$package_dir" -maxdepth 1 -type f -name '*.zip' -print)
+          if [[ "${#packages[@]}" -ne 1 ]]; then
+            echo "Expected one Linux ZIP package, found ${#packages[@]}." >&2
+            exit 1
+          fi
+          python3 -c 'import sys, zipfile; names=zipfile.ZipFile(sys.argv[1]).namelist(); assert any(name.endswith("CountdownStudio.so") for name in names), "CountdownStudio.so missing from package"' "${packages[0]}"
+          sha256sum "${packages[0]}" > "$package_dir/SHA256SUMS-${{ matrix.family }}-Linux-x64.txt"
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: countdownstudio-${{ matrix.family }}-linux-x64
+          path: |
+            build-obs-${{ matrix.family }}-linux/packages/*.zip
+            build-obs-${{ matrix.family }}-linux/packages/SHA256SUMS-*.txt
+          if-no-files-found: error
+          retention-days: 14
   publish:
     name: Publish Windows release assets
     if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
-    needs: build
+    needs: [build, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -87,16 +161,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 6
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 10
 
           cat > release-notes.md <<'EOF'
           ## English
 
-          Windows x64 installers and ZIP packages, built against OBS Studio 32.2.2 (legacy layout) and OBS Studio 33.0.1 (modern layout). SHA-256 checksums are included. The NSIS installer is unsigned.
+          Windows x64 installers and ZIP packages for OBS Studio 32 and 33, plus Linux x64 ZIP packages built on Ubuntu 24.04 (OBS 32) and Ubuntu 26.04 (OBS 33). SHA-256 checksums are included. Linux packages are compile-verified; loading them inside Linux OBS still needs validation. The NSIS installer is unsigned.
 
           ## Français
 
-          Installateurs Windows x64 et paquets ZIP compilés pour OBS Studio 32.2.2 (format historique) et OBS Studio 33.0.1 (nouveau format). Les sommes de contrôle SHA-256 sont incluses. L’installateur NSIS n’est pas signé.
+          Installateurs Windows x64 et archives ZIP pour OBS Studio 32 et 33, ainsi que des ZIP Linux x64 compilés sous Ubuntu 24.04 (OBS 32) et Ubuntu 26.04 (OBS 33). Les sommes SHA-256 sont incluses. La compilation Linux est vérifiée, mais le chargement dans OBS sous Linux reste à valider. L’installateur NSIS n’est pas signé.
           EOF
 
           shopt -s nullglob
