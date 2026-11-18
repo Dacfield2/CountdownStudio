@@ -28,7 +28,7 @@ cmake --build build-obs --config Release
 ctest --test-dir build-obs -C Release --output-on-failure
 ```
 
-The compatibility target starts at OBS 32. Build separate plugin packages against the matching OBS SDK family: OBS 32 rejects plugins built for a newer OBS release. OBS 32 uses the legacy layout, while OBS 33 and newer use the modern layout. Select it with `-DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT=legacy` or `modern`. The exact SDK setup still depends on the target platform. This project does not bundle OBS or its SDK.
+The compatibility target starts at OBS 32. Build separate plugin packages against the matching OBS SDK family: OBS 32 rejects plugins built for a newer OBS release. OBS 32 uses the legacy layout, while OBS 33 and newer use the modern layout. Select it with `-DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT=legacy` or `modern`. For upstream OBS 32 use Ubuntu 24.04; OBS 33 has dropped Ubuntu 24.04, so use Ubuntu 26.04 LTS for OBS 33+. The current OBS 33 macOS target is macOS 13+. These are OBS platform baselines; Countdown Studio's OBS module has not yet been validated as loaded on Linux or macOS. This project does not bundle OBS or its SDK.
 
 To create a portable ZIP from the install rules for the current platform, run:
 
@@ -36,7 +36,7 @@ To create a portable ZIP from the install rules for the current platform, run:
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-The archive includes the OBS module, locale files, browser remote-control page, corresponding source files, and the license. It is not a signed platform installer.
+The archive includes the OBS module, locale files, optional browser remote-control page, corresponding source files, and the license. It is not a signed platform installer.
 
 Platform install commands and the steps for adding the source in OBS are documented in the bilingual [README](../README.md).
 
@@ -68,7 +68,7 @@ cmake --build build-obs --config Release
 ctest --test-dir build-obs -C Release --output-on-failure
 ```
 
-L’objectif de compatibilité commence avec OBS 32. Compilez des paquets distincts avec la famille de SDK OBS correspondante : OBS 32 refuse les plugins compilés pour une version OBS plus récente. OBS 32 utilise l’ancien format, OBS 33 et les versions ultérieures le format moderne. Sélectionnez-le avec `-DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT=legacy` ou `modern`. La préparation exacte du SDK dépend aussi de la plateforme. Ce projet ne fournit ni OBS ni son SDK.
+L’objectif de compatibilité commence avec OBS 32. Compilez des paquets distincts avec la famille de SDK OBS correspondante : OBS 32 refuse les plugins compilés pour une version OBS plus récente. OBS 32 utilise l’ancien format, OBS 33 et les versions ultérieures le format moderne. Sélectionnez-le avec `-DCOUNTDOWNSTUDIO_OBS_PLUGIN_LAYOUT=legacy` ou `modern`. Pour OBS 32, utilisez Ubuntu 24.04; OBS 33 ayant retiré Ubuntu 24.04, utilisez Ubuntu 26.04 LTS pour OBS 33+. La cible macOS actuelle d’OBS 33 nécessite macOS 13+. Ce sont les bases de plateforme d’OBS; le chargement du module Countdown Studio n’a pas encore été validé sous Linux ou macOS. Ce projet ne fournit ni OBS ni son SDK.
 
 Pour créer une archive ZIP portable à partir des règles d’installation de la plateforme actuelle :
 
@@ -76,7 +76,6 @@ Pour créer une archive ZIP portable à partir des règles d’installation de l
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-L’archive contient le module OBS, les fichiers de langue, la page de commande navigateur, les sources correspondantes et la licence. Ce n’est pas un installateur signé propre à une plateforme.
+L’archive contient le module OBS, les fichiers de langue, la télécommande navigateur facultative, les sources correspondantes et la licence. Ce n’est pas un installateur signé propre à une plateforme.
 
 Les commandes d’installation par plateforme et les étapes pour ajouter la source dans OBS figurent dans le [README bilingue](../README.md).
-

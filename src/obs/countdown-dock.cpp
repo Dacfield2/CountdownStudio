@@ -10,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -56,6 +57,22 @@ public:
         add_button(time_row, "Controls.AddFiveMinutes", "add_five_minutes");
         layout->addLayout(time_row);
 
+        auto *custom_time_row = new QHBoxLayout();
+        custom_time_row->addWidget(new QLabel(QString::fromUtf8(obs_module_text("Dock.MinutesToAdd")), this));
+        custom_minutes_ = new QSpinBox(this);
+        custom_minutes_->setRange(1, 120);
+        custom_minutes_->setValue(10);
+        custom_time_row->addWidget(custom_minutes_);
+        auto *add_custom_time = new QPushButton(QString::fromUtf8(obs_module_text("Controls.AddCustomMinutes")), this);
+        QObject::connect(add_custom_time, &QPushButton::clicked, this,
+                         [this]() { trigger("add_minute", custom_minutes_->value()); });
+        custom_time_row->addWidget(add_custom_time);
+        layout->addLayout(custom_time_row);
+
+        auto *configure = new QPushButton(QString::fromUtf8(obs_module_text("Dock.ConfigureSource")), this);
+        QObject::connect(configure, &QPushButton::clicked, this, [this]() { open_source_properties(); });
+        layout->addWidget(configure);
+
         status_ = new QLabel(QString::fromUtf8(obs_module_text("Dock.Help")), this);
         status_->setWordWrap(true);
         layout->addWidget(status_);
@@ -89,10 +106,11 @@ private:
         for (auto *button : findChildren<QPushButton *>()) {
             button->setEnabled(has_source);
         }
+        custom_minutes_->setEnabled(has_source);
         status_->setText(QString::fromUtf8(obs_module_text(has_source ? "Dock.Help" : "Dock.NoSources")));
     }
 
-    void trigger(const char *property_name)
+    void trigger(const char *property_name, int repetitions = 1)
     {
         const auto source_name = sources_->currentText().toUtf8();
         obs_source_t *source = obs_get_source_by_name(source_name.constData());
@@ -104,14 +122,27 @@ private:
         if (properties != nullptr) {
             obs_property_t *property = obs_properties_get(properties, property_name);
             if (property != nullptr) {
-                obs_property_button_clicked(property, nullptr);
+                for (int index = 0; index < repetitions; ++index) {
+                    obs_property_button_clicked(property, nullptr);
+                }
             }
             obs_properties_destroy(properties);
         }
         obs_source_release(source);
     }
 
+    void open_source_properties()
+    {
+        const auto source_name = sources_->currentText().toUtf8();
+        obs_source_t *source = obs_get_source_by_name(source_name.constData());
+        if (source != nullptr) {
+            obs_frontend_open_source_properties(source);
+            obs_source_release(source);
+        }
+    }
+
     QComboBox *sources_{nullptr};
+    QSpinBox *custom_minutes_{nullptr};
     QLabel *status_{nullptr};
 };
 
