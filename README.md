@@ -6,7 +6,7 @@ Countdown Studio is a cross-platform OBS Studio countdown project. Its timer eng
 
 ### Project status
 
-The project includes a C++20 timer engine, a native OBS countdown source and control dock, live time extensions, visual settings, configuration examples, and English/French localization. The normal workflow is entirely inside OBS; the browser remote is optional. The compatibility target starts at OBS Studio 32. Build separate plugin packages against the matching OBS SDK family: OBS 32 uses the legacy plugin layout, while OBS 33 and newer use the modern layout. The current automated CI tests the platform-independent core only; the OBS module has not yet been verified as a loaded plugin on Ubuntu or macOS. The OBS module requires matching `libobs`, `obs-frontend-api`, and Qt 6 development packages. The source renders a transparent 1280×360 countdown overlay; OBS can scale it to any canvas resolution. The project is licensed under [GPL-2.0-or-later](LICENSE).
+The project includes a C++20 timer engine, a native OBS countdown source and control dock, live time extensions, visual settings, configuration examples, and English/French localization. All user-facing controls are available directly inside OBS. The compatibility target starts at OBS Studio 32. Build separate plugin packages against the matching OBS SDK family: OBS 32 uses the legacy plugin layout, while OBS 33 and newer use the modern layout. The current automated CI tests the platform-independent core only; the OBS module has not yet been verified as a loaded plugin on Ubuntu or macOS. The OBS module requires matching `libobs`, `obs-frontend-api`, and Qt 6 development packages. The source renders a transparent 1280×360 countdown overlay; OBS can scale it to any canvas resolution. The project is licensed under [GPL-2.0-or-later](LICENSE).
 
 ### Build the core and run its tests
 
@@ -74,11 +74,9 @@ cmake --install build-obs33 --prefix "$HOME/.local/share/obs-studio/plugins/Coun
 
 Then fully restart OBS. In **Sources**, select **+ → Countdown Studio Timer**. Set the duration and choose whether it starts automatically or shows a translucent black background. Use **Start / Resume**, **Pause**, and **Restart countdown** in the source properties to control it. Start / Resume after the timer reaches zero starts a fresh countdown using its configured duration. While it runs, **Add 1 minute** and **Add 5 minutes** extend the current countdown immediately; they also work while paused, and adding time after zero starts the timer again. The automatic format shows `MM:SS` below one hour and `HH:MM:SS` from one hour. Transform it in the scene to fit your canvas.
 
-Open **Docks → Countdown Studio Controls** for the native OBS control panel. It can start, pause, restart, add 1 or 5 minutes, add a chosen number of minutes (1–120), and open the selected source's OBS properties. In those properties you can set duration, auto-start, font and style, text/background colors and transparency, text size, and automatic, `MM:SS`, or `HH:MM:SS` formatting. Normal use needs no browser or WebSocket server.
+Open **Docks → Countdown Studio Controls** for the native OBS control panel. It can start, pause, restart, add 1 or 5 minutes, add a chosen number of minutes (1–120), and open the selected source's OBS properties. In those properties you can set duration, auto-start, font and style, text/background colors and transparency, text size, and automatic, `MM:SS`, or `HH:MM:SS` formatting.
 
-### Optional browser remote and installation package
-
-The local browser remote remains optional for users who prefer a separate remote panel. It requires enabling **Tools → WebSocket Server Settings** and is not needed for any of the plugin's normal controls.
+### Installation package
 
 After configuring and building the OBS module for the right OBS family, create its installation package:
 
@@ -95,7 +93,6 @@ For OBS 32 portable installs, use the legacy plugin path documented for that OBS
 - `include/countdownstudio/` — public C++ timer API
 - `src/core/` — platform-independent countdown logic
 - `src/obs/` — OBS module entry point and countdown source
-- `data/web/` — optional browser remote controls for OBS WebSocket
 - `config/` — example settings and JSON schema
 - `data/locale/` — English and French OBS strings
 - `docs/` — architecture and build notes
@@ -113,7 +110,7 @@ Countdown Studio est un projet de compte à rebours multiplateforme pour OBS Stu
 
 ### État du projet
 
-Le projet comprend un moteur de temps C++20, une source de compte à rebours et un panneau de commande OBS natifs, l’ajout de temps en direct, des réglages visuels, des exemples de configuration et la localisation française/anglaise. L’utilisation normale se fait entièrement dans OBS; la télécommande navigateur est facultative. L’objectif de compatibilité commence avec OBS Studio 32. Il faut compiler des paquets distincts avec la famille de SDK OBS correspondante : OBS 32 utilise l’ancien format de plugin, tandis qu’OBS 33 et les versions ultérieures utilisent le nouveau format. La CI teste actuellement le cœur indépendant de la plateforme uniquement; le module OBS n’a pas encore été validé comme plugin chargé dans OBS sous Ubuntu ou macOS. Il nécessite les paquets de développement compatibles `libobs`, `obs-frontend-api` et Qt 6 Widgets. La source affiche une incrustation transparente de 1280×360 qu’OBS peut redimensionner pour toute résolution de canevas. Le projet est distribué sous licence [GPL-2.0-or-later](LICENSE).
+Le projet comprend un moteur de temps C++20, une source de compte à rebours et un panneau de commande OBS natifs, l’ajout de temps en direct, des réglages visuels, des exemples de configuration et la localisation française/anglaise. Toutes les commandes destinées à l’utilisateur sont disponibles directement dans OBS. L’objectif de compatibilité commence avec OBS Studio 32. Il faut compiler des paquets distincts avec la famille de SDK OBS correspondante : OBS 32 utilise l’ancien format de plugin, tandis qu’OBS 33 et les versions ultérieures utilisent le nouveau format. La CI teste actuellement le cœur indépendant de la plateforme uniquement; le module OBS n’a pas encore été validé comme plugin chargé dans OBS sous Ubuntu ou macOS. Il nécessite les paquets de développement compatibles `libobs`, `obs-frontend-api` et Qt 6 Widgets. La source affiche une incrustation transparente de 1280×360 qu’OBS peut redimensionner pour toute résolution de canevas. Le projet est distribué sous licence [GPL-2.0-or-later](LICENSE).
 
 ### Compiler le cœur et lancer ses tests
 
@@ -181,11 +178,9 @@ cmake --install build-obs33 --prefix "$HOME/.local/share/obs-studio/plugins/Coun
 
 Redémarrez complètement OBS. Dans **Sources**, choisissez **+ → Minuteur Countdown Studio**. Réglez la durée et indiquez si le minuteur démarre automatiquement ou affiche un fond noir translucide. Les boutons **Démarrer / reprendre**, **Mettre en pause** et **Réinitialiser le compte à rebours** dans les propriétés de la source le contrôlent. Après zéro, **Démarrer / reprendre** lance un nouveau décompte avec la durée configurée. Pendant le décompte, **Ajouter 1 minute** et **Ajouter 5 minutes** prolongent immédiatement le temps restant; ils fonctionnent aussi en pause, et ajoutés après zéro, ils relancent le minuteur. Le format automatique affiche `MM:SS` sous une heure et `HH:MM:SS` à partir d’une heure. Transformez la source dans la scène pour l’adapter au canevas.
 
-Ouvrez **Docks → Commandes Countdown Studio** pour afficher le panneau natif. Il permet de démarrer, mettre en pause, réinitialiser, ajouter 1 ou 5 minutes, ajouter un nombre choisi de minutes (1 à 120) et ouvrir les propriétés OBS de la source sélectionnée. Ces propriétés permettent de régler la durée, le démarrage automatique, la police et son style, les couleurs et la transparence du texte et du fond, la taille ainsi que le format automatique, `MM:SS` ou `HH:MM:SS`. L’utilisation normale ne nécessite ni navigateur ni serveur WebSocket.
+Ouvrez **Docks → Commandes Countdown Studio** pour afficher le panneau natif. Il permet de démarrer, mettre en pause, réinitialiser, ajouter 1 ou 5 minutes, ajouter un nombre choisi de minutes (1 à 120) et ouvrir les propriétés OBS de la source sélectionnée. Ces propriétés permettent de régler la durée, le démarrage automatique, la police et son style, les couleurs et la transparence du texte et du fond, la taille ainsi que le format automatique, `MM:SS` ou `HH:MM:SS`.
 
-### Télécommande navigateur facultative et paquet d’installation
-
-La télécommande navigateur locale reste facultative pour les utilisateurs qui préfèrent un panneau séparé. Elle nécessite d’activer **Outils → Paramètres du serveur WebSocket** et n’est requise pour aucune commande normale du plugin.
+### Paquet d’installation
 
 Après avoir configuré et compilé le module OBS pour la bonne famille OBS, créez son paquet d’installation :
 
@@ -202,7 +197,6 @@ Pour OBS 32 portable, utilisez l’emplacement historique indiqué pour cette ve
 - `include/countdownstudio/` — API C++ publique du minuteur
 - `src/core/` — logique de compte à rebours indépendante de la plateforme
 - `src/obs/` — point d’entrée du module OBS et source du minuteur
-- `data/web/` — télécommande navigateur facultative via OBS WebSocket
 - `config/` — exemple de paramètres et schéma JSON
 - `data/locale/` — textes OBS en français et en anglais
 - `docs/` — notes d’architecture et de compilation

@@ -36,7 +36,7 @@ To create a portable ZIP from the install rules for the current platform, run:
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-The archive includes the OBS module, locale files, optional browser remote-control page, corresponding source files, and the license. It is not a signed platform installer.
+The archive includes the OBS module, locale files, corresponding source files, and the license. It is not a signed platform installer.
 
 Platform install commands and the steps for adding the source in OBS are documented in the bilingual [README](../README.md).
 
@@ -76,6 +76,6 @@ Pour créer une archive ZIP portable à partir des règles d’installation de l
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-L’archive contient le module OBS, les fichiers de langue, la télécommande navigateur facultative, les sources correspondantes et la licence. Ce n’est pas un installateur signé propre à une plateforme.
+L’archive contient le module OBS, les fichiers de langue, les sources correspondantes et la licence. Ce n’est pas un installateur signé propre à une plateforme.
 
 Les commandes d’installation par plateforme et les étapes pour ajouter la source dans OBS figurent dans le [README bilingue](../README.md).
