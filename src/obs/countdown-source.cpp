@@ -41,6 +41,12 @@ constexpr std::size_t kChannels = 4;
 constexpr uint32_t kDefaultTextColor = 0xFFFFFFFF;
 constexpr uint32_t kDefaultBackgroundColor = 0x99000000;
 
+QColor qcolor_from_obs_rgba(uint32_t color)
+{
+    return QColor(static_cast<int>(color & 0xFF), static_cast<int>((color >> 8) & 0xFF),
+                  static_cast<int>((color >> 16) & 0xFF), static_cast<int>((color >> 24) & 0xFF));
+}
+
 int64_t read_duration(obs_data_t *settings)
 {
     return std::clamp<int64_t>(obs_data_get_int(settings, "duration_seconds"), 1,
@@ -355,7 +361,7 @@ private:
         QPainter painter(&image);
         painter.setRenderHint(QPainter::TextAntialiasing, true);
         if (show_background_) {
-            painter.fillRect(image.rect(), QColor::fromRgba(background_color_));
+            painter.fillRect(image.rect(), qcolor_from_obs_rgba(background_color_));
         }
 
         const bool use_custom_font = !custom_font_family_.empty();
@@ -406,7 +412,7 @@ private:
 
             painter.save();
             painter.setFont(font);
-            painter.setPen(QColor::fromRgba(text_color_));
+            painter.setPen(qcolor_from_obs_rgba(text_color_));
             painter.setOpacity(std::clamp(opacity, 0.0, 1.0));
             if (reveal) {
                 const double line_width = QFontMetricsF(font).horizontalAdvance(text);

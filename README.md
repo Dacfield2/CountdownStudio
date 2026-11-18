@@ -28,7 +28,7 @@ The repository is private, so you need repository access to download the files.
 
 ### Change the look or use your own font
 
-Open the timer source **Properties** to change its font, size, colors, transparency, time format, and the message shown when the countdown ends.
+Open the timer source **Properties** to change its font, size, colors, transparency, time format, and the message shown when the countdown ends. The color preview and rendered timer use the same OBS color values.
 
 To use your own font, choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. OBS uses that font from its current location on your computer; the plugin does not copy the font into the scene or installer.
 
@@ -78,7 +78,7 @@ Le dépôt est privé : vous devez y avoir accès pour télécharger les fichier
 
 ### Modifier l’apparence ou utiliser votre police
 
-Dans les **Propriétés** de la source, vous pouvez modifier la police, la taille, les couleurs, la transparence, le format du temps et le message affiché à la fin du décompte.
+Dans les **Propriétés** de la source, vous pouvez modifier la police, la taille, les couleurs, la transparence, le format du temps et le message affiché à la fin du décompte. L’aperçu du sélecteur de couleur correspond au rendu du minuteur.
 
 Pour utiliser votre police, choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. OBS utilise le fichier à son emplacement actuel sur votre ordinateur; le plugin ne copie pas la police dans la scène ou l’installateur.
 
