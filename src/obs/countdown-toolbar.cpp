@@ -172,7 +172,7 @@ void register_countdown_toolbar()
         return;
     }
 
-    QWidget *main_window = obs_frontend_get_main_window();
+    auto *main_window = static_cast<QWidget *>(obs_frontend_get_main_window());
     if (main_window == nullptr) {
         blog(LOG_WARNING, "[CountdownStudio] Could not find the OBS main window for source controls.");
         return;
