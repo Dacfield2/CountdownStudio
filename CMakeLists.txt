@@ -74,7 +74,7 @@ if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
     else()
         set(COUNTDOWNSTUDIO_SOURCE_DESTINATION "source")
     endif()
-    install(DIRECTORY src include config tests cmake data
+    install(DIRECTORY src include config tests cmake data scripts
         DESTINATION "${COUNTDOWNSTUDIO_SOURCE_DESTINATION}")
     install(FILES CMakeLists.txt CMakePresets.json README.md CONTRIBUTING.md LICENSE
         DESTINATION "${COUNTDOWNSTUDIO_SOURCE_DESTINATION}")
@@ -104,4 +104,3 @@ if(BUILD_TESTING)
     set_target_properties(countdownstudio_tests PROPERTIES CXX_EXTENSIONS OFF)
     add_test(NAME countdownstudio_core COMMAND countdownstudio_tests)
 endif()
-

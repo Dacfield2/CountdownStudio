@@ -6,7 +6,7 @@ Countdown Studio is a cross-platform OBS Studio countdown project. Its timer eng
 
 ### Project status
 
-The project includes a C++20 timer engine, a native OBS countdown source and control dock, live time extensions, visual settings, custom font file loading, configuration examples, and English/French localization. All user-facing controls are available directly inside OBS. The compatibility target starts at OBS Studio 32. Build separate plugin packages against the matching OBS SDK family: OBS 32 uses the legacy plugin layout, while OBS 33 and newer use the modern layout. The current automated CI tests the platform-independent core only; the OBS module has not yet been verified as a loaded plugin on Ubuntu or macOS. The OBS module requires matching `libobs`, `obs-frontend-api`, and Qt 6 development packages. The source renders a transparent 1280×360 countdown overlay; OBS can scale it to any canvas resolution. The project is licensed under [GPL-2.0-or-later](LICENSE).
+The project includes a C++20 timer engine, a native OBS countdown source and control dock, live time extensions, visual settings, custom font file loading, configuration examples, and English/French localization. All user-facing controls are available directly inside OBS. The Windows release workflow builds separate packages against OBS Studio 32.2.2 (legacy layout) and 33.0.1 (modern layout). The OBS module has not yet been built or load-verified on Ubuntu or macOS. The OBS module requires matching `libobs`, `obs-frontend-api`, and Qt 6 development packages. The source renders a transparent 1280×360 countdown overlay; OBS can scale it to any canvas resolution. The project is licensed under [GPL-2.0-or-later](LICENSE).
 
 ### Build the core and run its tests
 
@@ -17,6 +17,17 @@ ctest --preset default
 ```
 
 To configure the OBS module, install an OBS development environment that provides the `libobs` and `obs-frontend-api` CMake packages, plus Qt 6 Widgets, then configure with `-DCOUNTDOWNSTUDIO_BUILD_OBS_PLUGIN=ON`.
+
+### Build Windows OBS packages
+
+With Visual Studio 2026, CMake, Windows SDK 10.0.26100 or newer, and NSIS 3.12 installed, build either Windows package with the dependency-verified script. OBS 33's current supported Windows toolchain uses Visual Studio 2026; the hosted release workflow provides Visual Studio and installs NSIS automatically.
+
+```powershell
+pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 32.2.2
+pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 33.0.1
+```
+
+The script downloads the matching OBS source and development dependencies, checks their SHA-256 hashes, builds the OBS development libraries and Countdown Studio, then creates and checks the NSIS installer and ZIP in `build-obs-<version>/packages/`.
 
 ### Install and use it in OBS
 
@@ -78,7 +89,7 @@ Open **Docks → Countdown Studio Controls** for the native OBS control panel. I
 
 ### Use a custom font
 
-Open the timer source's **Properties**, then choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. Leave that field empty to use the font and style selected in **Font**. Countdown Studio loads the font locally inside OBS and stores its file path without copying the font into the scene or installer. Keep the file at that path. If you move the scene to another computer, install the same font there or select its local font file again. If the file cannot be loaded, the source falls back to the font selected in **Font**.
+Open the timer source's **Properties**, then choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font file**. Leave that field empty to use the font and style selected in **Font**. The chosen font is loaded locally by OBS; Countdown Studio stores its file path but does not copy the font into the scene or installer. Keep the file at that path. If you move the scene to another computer, install the same font there or select its local font file again. If the file cannot be loaded, the source falls back to the font selected in **Font**.
 
 ### Installation package
 
@@ -88,15 +99,13 @@ After configuring and building the OBS module for the right OBS family, create i
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-On Windows, CPack creates a guided installer and a ZIP. The installer defaults to `%ProgramData%\obs-studio\plugins\CountdownStudio`; for portable OBS, choose `<OBS folder>\plugins\CountdownStudio` in the installer. Use the `legacy` build for OBS 32 or the `modern` build for OBS 33+. On macOS and Linux, CPack creates a ZIP; extract it into the matching OBS plugin folder shown above. Each package includes the corresponding source files and license under `source/`. The Windows installer is not code-signed. Prebuilt public downloads are not available yet; the repository is private and the current CI does not package the OBS module.
+On Windows, CPack creates a guided installer and a ZIP. The installer defaults to `%ProgramData%\obs-studio\plugins\CountdownStudio`; for portable OBS, choose `<OBS folder>\plugins\CountdownStudio` in the installer. Use the `legacy` package for OBS 32 or the `modern` package for OBS 33+. The Windows workflow produces packages for OBS 32.2.2 and OBS 33.0.1, each with a SHA-256 checksum file. On macOS and Linux, CPack creates a ZIP; extract it into the matching OBS plugin folder shown above. Each package includes the corresponding source files and license under `source/`. The Windows installer is not code-signed. The repository is private, so its GitHub Releases are only available to repository members.
 
-The proposed per-platform release packages, public-ready file names, and verification steps are in [Release packaging](docs/RELEASE-PACKAGING.md).
+The current Windows package outputs and remaining platform packaging work are described in [Release packaging](docs/RELEASE-PACKAGING.md).
 
 ### Publish a GitHub Release manually
 
-The repository currently has no automatic release workflow. Build and verify the OBS module for each target first; the existing CI checks only the platform-independent core. Set the version in `project(CountdownStudio VERSION ...)` in `CMakeLists.txt`, build with the matching OBS SDK/layout, then create the package with `cpack --config build-obs/CPackConfig.cmake`. Windows currently produces an NSIS `.exe` and ZIP when NSIS is installed; macOS and Linux produce ZIP archives. Do not upload a core-only build as an OBS plugin installer.
-
-To publish the files, push the code to `main`, create and push a version tag matching the CMake version (for example, `v0.1.0` only when the project version is `0.1.0`), then open the private repository on GitHub and select **Releases → Draft a new release**. Choose that tag, add a bilingual title/description, attach the verified installer/archive files, and publish the release. Check the published page and download each asset once. Since the repository is private, only people with repository access can download its releases. This manual process does not create packages automatically; a release workflow still needs to be built and validated.
+The Windows release workflow can also be started manually from **Actions → Windows OBS packages → Run workflow**; this builds and checks the installers without publishing a Release. To publish, push a version tag matching the CMake version (for example, `v0.1.0` for project version `0.1.0`). The workflow builds the OBS 32.2.2 and OBS 33.0.1 packages and publishes them with SHA-256 checksums after both builds succeed. Ubuntu and macOS plugin packages are not included yet because their OBS module builds have not been verified. Since the repository is private, only people with repository access can download its releases.
 
 For OBS 32 portable installs, use the legacy plugin path documented for that OBS build; for OBS 33+ portable installs, place the modern plugin folder inside the OBS portable root. For Flatpak OBS, use a package compatible with that Flatpak runtime. See the [OBS Plugins Guide](https://obsproject.com/kb/plugins-guide) and [plugin location migration guide](https://obsproject.com/kb/legacy-plugin-locations) for platform-specific locations.
 
@@ -122,7 +131,7 @@ Countdown Studio est un projet de compte à rebours multiplateforme pour OBS Stu
 
 ### État du projet
 
-Le projet comprend un moteur de temps C++20, une source de compte à rebours et un panneau de commande OBS natifs, l’ajout de temps en direct, des réglages visuels, le chargement de fichiers de police personnalisés, des exemples de configuration et la localisation française/anglaise. Toutes les commandes destinées à l’utilisateur sont disponibles directement dans OBS. L’objectif de compatibilité commence avec OBS Studio 32. Il faut compiler des paquets distincts avec la famille de SDK OBS correspondante : OBS 32 utilise l’ancien format de plugin, tandis qu’OBS 33 et les versions ultérieures utilisent le nouveau format. La CI teste actuellement le cœur indépendant de la plateforme uniquement; le module OBS n’a pas encore été validé comme plugin chargé dans OBS sous Ubuntu ou macOS. Il nécessite les paquets de développement compatibles `libobs`, `obs-frontend-api` et Qt 6 Widgets. La source affiche une incrustation transparente de 1280×360 qu’OBS peut redimensionner pour toute résolution de canevas. Le projet est distribué sous licence [GPL-2.0-or-later](LICENSE).
+Le projet comprend un moteur de temps C++20, une source de compte à rebours et un panneau de commande OBS natifs, l’ajout de temps en direct, des réglages visuels, le chargement de fichiers de police personnalisés, des exemples de configuration et la localisation française/anglaise. Toutes les commandes destinées à l’utilisateur sont disponibles directement dans OBS. Le workflow Windows compile des paquets distincts pour OBS Studio 32.2.2 (format historique) et 33.0.1 (nouveau format). Le module OBS n’a pas encore été compilé ni vérifié comme plugin chargé sous Ubuntu ou macOS. Il nécessite les paquets de développement compatibles `libobs`, `obs-frontend-api` et Qt 6 Widgets. La source affiche une incrustation transparente de 1280×360 qu’OBS peut redimensionner pour toute résolution de canevas. Le projet est distribué sous licence [GPL-2.0-or-later](LICENSE).
 
 ### Compiler le cœur et lancer ses tests
 
@@ -133,6 +142,17 @@ ctest --preset default
 ```
 
 Pour configurer le module OBS, installez un environnement de développement OBS qui fournit les paquets CMake `libobs` et `obs-frontend-api`, ainsi que Qt 6 Widgets, puis configurez avec `-DCOUNTDOWNSTUDIO_BUILD_OBS_PLUGIN=ON`.
+
+### Compiler les paquets Windows pour OBS
+
+Avec Visual Studio 2026, CMake, le SDK Windows 10 version 10.0.26100 ou ultérieure et NSIS 3.12, compilez l’un ou l’autre des paquets Windows à l’aide du script qui vérifie les dépendances. La version Windows prise en charge par OBS 33 utilise Visual Studio 2026; le workflow de publication fournit Visual Studio et installe NSIS automatiquement.
+
+```powershell
+pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 32.2.2
+pwsh -File scripts/Build-Windows-Obs.ps1 -ObsVersion 33.0.1
+```
+
+Le script télécharge les sources OBS et les dépendances de développement correspondantes, vérifie leurs empreintes SHA-256, compile les bibliothèques de développement OBS et Countdown Studio, puis crée et vérifie l’installateur NSIS et le ZIP dans `build-obs-<version>/packages/`.
 
 ### Installer et utiliser le plugin dans OBS
 
@@ -194,7 +214,7 @@ Ouvrez **Docks → Commandes Countdown Studio** pour afficher le panneau natif. 
 
 ### Utiliser une police personnalisée
 
-Ouvrez les **Propriétés** de la source minuteur, puis choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. Laissez ce champ vide pour utiliser la police et le style choisis dans **Police**. Countdown Studio charge la police localement dans OBS; le plugin mémorise le chemin du fichier sans copier la police dans la scène ou l’installateur. Gardez le fichier à cet emplacement. Si vous déplacez la scène vers un autre ordinateur, installez-y la même police ou sélectionnez son fichier local. Si le chargement échoue, la source reprend la police choisie dans **Police**.
+Ouvrez les **Propriétés** de la source minuteur, puis choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans **Fichier de police personnalisé**. Laissez ce champ vide pour utiliser la police et le style choisis dans **Police**. OBS charge la police localement; Countdown Studio mémorise le chemin du fichier sans copier la police dans la scène ou l’installateur. Gardez le fichier à cet emplacement. Si vous déplacez la scène vers un autre ordinateur, installez-y la même police ou sélectionnez son fichier local. Si le chargement échoue, la source reprend la police choisie dans **Police**.
 
 ### Paquet d’installation
 
@@ -204,15 +224,13 @@ Après avoir configuré et compilé le module OBS pour la bonne famille OBS, cr�
 cpack --config build-obs/CPackConfig.cmake
 ```
 
-Sous Windows, CPack crée un installateur guidé et un fichier ZIP. Le dossier proposé par défaut est `%ProgramData%\obs-studio\plugins\CountdownStudio`; pour OBS portable, choisissez `<dossier OBS>\plugins\CountdownStudio` dans l’installateur. Utilisez la compilation `legacy` pour OBS 32 ou `modern` pour OBS 33+. Sous macOS et Linux, CPack crée une archive ZIP à extraire dans le dossier OBS correspondant indiqué plus haut. Chaque paquet contient les sources correspondantes et la licence dans `source/`. L’installateur Windows n’est pas signé. Les téléchargements publics précompilés ne sont pas encore disponibles; le dépôt est privé et la CI actuelle ne crée pas encore de paquet du module OBS.
+Sous Windows, CPack crée un installateur guidé et un fichier ZIP. Le dossier proposé par défaut est `%ProgramData%\obs-studio\plugins\CountdownStudio`; pour OBS portable, choisissez `<dossier OBS>\plugins\CountdownStudio` dans l’installateur. Utilisez le paquet `legacy` pour OBS 32 ou `modern` pour OBS 33+. Le workflow Windows crée des paquets pour OBS 32.2.2 et OBS 33.0.1, chacun accompagné d’un fichier de somme SHA-256. Sous macOS et Linux, CPack crée une archive ZIP à extraire dans le dossier OBS correspondant indiqué plus haut. Chaque paquet contient les sources correspondantes et la licence dans `source/`. L’installateur Windows n’est pas signé. Le dépôt est privé; ses GitHub Releases sont donc réservées aux personnes qui y ont accès.
 
-Les formats de paquets proposés par système, les noms de fichiers prêts pour une publication publique et les étapes de vérification sont détaillés dans [Préparation des paquets de publication](docs/RELEASE-PACKAGING.md).
+Les paquets Windows actuels et le travail restant pour les autres systèmes sont décrits dans [Préparation des paquets de publication](docs/RELEASE-PACKAGING.md).
 
 ### Publier manuellement une Release GitHub
 
-Le dépôt ne possède actuellement aucun workflow automatique de publication. Compilez et vérifiez d’abord le module OBS pour chaque cible; la CI existante ne vérifie que le cœur indépendant de la plateforme. Réglez la version dans `project(CountdownStudio VERSION ...)` du fichier `CMakeLists.txt`, compilez avec le SDK et le format OBS correspondants, puis créez le paquet avec `cpack --config build-obs/CPackConfig.cmake`. Sous Windows, CPack crée actuellement un installateur NSIS `.exe` et un ZIP si NSIS est installé; sous macOS et Linux, il crée des archives ZIP. Ne publiez pas une compilation du cœur seul en tant qu’installateur du plugin OBS.
-
-Pour publier les fichiers, poussez le code sur `main`, créez et poussez une étiquette de version identique à celle de CMake (par exemple `v0.1.0` uniquement si la version du projet est `0.1.0`), puis ouvrez le dépôt privé sur GitHub et choisissez **Releases → Draft a new release**. Sélectionnez cette étiquette, ajoutez un titre et une description bilingues, joignez les installateurs/archives vérifiés et publiez la Release. Vérifiez ensuite la page publiée et téléchargez chaque fichier une fois. Comme le dépôt est privé, seuls les utilisateurs qui y ont accès peuvent télécharger ses Releases. Cette méthode manuelle ne crée pas les paquets automatiquement; un workflow de publication reste à développer et à valider.
+Le workflow Windows peut aussi être lancé manuellement depuis **Actions → Windows OBS packages → Run workflow**; il compile et vérifie les installateurs sans publier de Release. Pour publier, poussez une étiquette de version identique à la version CMake (par exemple `v0.1.0` pour la version du projet `0.1.0`). Le workflow compile les paquets OBS 32.2.2 et OBS 33.0.1 et les publie avec leurs sommes SHA-256 lorsque les deux compilations réussissent. Les paquets plugin Ubuntu et macOS ne sont pas inclus, car la compilation de leur module OBS n’a pas encore été vérifiée. Le dépôt étant privé, seules les personnes autorisées à le lire peuvent télécharger ses Releases.
 
 Pour OBS 32 portable, utilisez l’emplacement historique indiqué pour cette version; pour OBS 33+, placez le dossier du plugin au format moderne dans le dossier portable OBS. Pour OBS Flatpak, utilisez un paquet compatible avec cet environnement Flatpak. Consultez le [guide officiel des plugins OBS](https://obsproject.com/kb/plugins-guide) et le [guide de migration des dossiers de plugins](https://obsproject.com/kb/legacy-plugin-locations) pour les emplacements par plateforme.
 
