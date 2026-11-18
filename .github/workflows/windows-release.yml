@@ -53,7 +53,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: countdownstudio-${{ matrix.family }}-windows-x64
-          path: build-obs-${{ matrix.obs-version }}/packages/*
+          path: |
+            build-obs-${{ matrix.obs-version }}/packages/*.exe
+            build-obs-${{ matrix.obs-version }}/packages/*.zip
+            build-obs-${{ matrix.obs-version }}/packages/SHA256SUMS-*.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -96,7 +99,11 @@ jobs:
           Installateurs Windows x64 et paquets ZIP compilés pour OBS Studio 32.2.2 (format historique) et OBS Studio 33.0.1 (nouveau format). Les sommes de contrôle SHA-256 sont incluses. L’installateur NSIS n’est pas signé.
           EOF
 
-          gh release create "$RELEASE_TAG" release-assets/* \
+          shopt -s nullglob
+          release_files=(release-assets/*.exe release-assets/*.zip release-assets/SHA256SUMS-*.txt)
+          test "${#release_files[@]}" -eq 6
+
+          gh release create "$RELEASE_TAG" "${release_files[@]}" \
             --verify-tag \
             --title "Countdown Studio ${RELEASE_TAG#v}" \
             --notes-file release-notes.md
