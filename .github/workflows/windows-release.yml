@@ -164,7 +164,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   publish:
-    name: Publish Windows release assets
+    name: Publish GitHub release assets
     if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
     needs: [build, build-linux]
     runs-on: ubuntu-latest
@@ -204,7 +204,7 @@ jobs:
 
           shopt -s nullglob
           release_files=(release-assets/*.exe release-assets/*.zip release-assets/SHA256SUMS-*.txt)
-          test "${#release_files[@]}" -eq 6
+          test "${#release_files[@]}" -eq 10
 
           gh release create "$RELEASE_TAG" "${release_files[@]}" \
             --target main \

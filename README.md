@@ -28,7 +28,7 @@ Under **Animation**, choose effects for the timer start and text changes. By def
 
 ### Compatibility
 
-Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are compiled against matching OBS SDKs (OBS 32.2.2 on Ubuntu 24.04 and OBS 33.0.1 on Ubuntu 26.04). Download the ZIP from the **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml). Linux packages target native Ubuntu OBS installations; Flatpak/Snap support and runtime loading still need testing. macOS packages are not currently available.
+Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are compiled against matching OBS SDKs (OBS 32.2.2 on Ubuntu 24.04 and OBS 33.0.1 on Ubuntu 26.04). Download Linux packages from the **Assets** section of a GitHub Release. The **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) also has temporary build packages. Linux packages target native Ubuntu OBS installations; Flatpak/Snap support and runtime loading still need testing. macOS packages are not currently available.
 
 ### Build from source
 
@@ -64,7 +64,7 @@ Dans **Animation**, choisissez les effets au démarrage et lors des changements 
 
 ### Compatibilité
 
-Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés avec les SDK OBS correspondants (OBS 32.2.2 sous Ubuntu 24.04 et OBS 33.0.1 sous Ubuntu 26.04). Téléchargez le ZIP dans la section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml). Les paquets Linux ciblent OBS installé nativement sous Ubuntu; leur compatibilité Flatpak/Snap et leur chargement restent à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
+Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés avec les SDK OBS correspondants (OBS 32.2.2 sous Ubuntu 24.04 et OBS 33.0.1 sous Ubuntu 26.04). Téléchargez les paquets Linux dans la section **Assets** d’une release GitHub. La section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) contient aussi les paquets temporaires de compilation. Les paquets Linux ciblent OBS installé nativement sous Ubuntu; leur compatibilité Flatpak/Snap et leur chargement restent à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
 
 ### Compiler le projet
 
