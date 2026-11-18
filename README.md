@@ -8,8 +8,8 @@ A countdown timer for OBS Studio, controlled directly inside OBS. Change the tim
 
 Download the latest version from [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest). Choose the installer that matches your OBS version:
 
-- **OBS 32:** `CountdownStudio-0.1.0-OBS32-Windows-x64-Setup.exe`
-- **OBS 33 or newer:** `CountdownStudio-0.1.0-OBS33-Windows-x64-Setup.exe`
+- **OBS 32:** `CountdownStudio-0.1.1-OBS32-Windows-x64-Setup.exe`
+- **OBS 33 or newer:** `CountdownStudio-0.1.1-OBS33-Windows-x64-Setup.exe`
 
 Then:
 
@@ -24,7 +24,7 @@ The repository is private, so you need repository access to download the files.
 
 1. In OBS, go to **Sources**, select **+**, then choose **Countdown Studio Timer**.
 2. Open the source **Properties** to set the starting time and appearance.
-3. Select the timer source in **Sources**. Use the small buttons beside **Properties** and **Filters** to start, pause, restart, or add 1 or 5 minutes. Select **+…** to add a custom number of minutes while the timer is running. If the buttons are unavailable, open **Docks → Countdown Studio Controls**.
+3. Select the timer source in **Sources**. Use the small buttons beside **Properties** and **Filters** to start, pause, restart, or add 1 or 5 minutes. Select **+…** to add a custom number of minutes while the timer is running. If the buttons are unavailable, open **Docks → Countdown Studio Controls**. If **Animation** is also missing from the source properties, the updated plugin did not load; check the OBS log for `[Countdown Studio] countdown source registered` after installing the package that matches your OBS version.
 
 ### Change the look or use your own font
 
@@ -42,7 +42,7 @@ Windows installers are provided for OBS 32 and OBS 33. The plugin has not yet be
 
 ### Publish a release
 
-Maintainers can publish a version by pushing its matching Git tag (for example, `v0.1.0`). GitHub Actions builds the Windows plugin for OBS 32.2.2 and OBS 33.0.1 on every push to `main`. It publishes a Release only after both builds succeed, when a version tag is pushed or a manual run includes a release tag. If publishing failed or the version tag was deleted, open **Actions → Windows OBS packages → Run workflow**, choose `main`, enter the version tag, and start the workflow again. The workflow rebuilds both packages and creates a missing tag from `main` before publishing. Each Release contains the two Windows installers, their ZIP packages, and SHA-256 checksum files.
+Maintainers can publish a version by pushing its matching Git tag (for example, `v0.1.1`). GitHub Actions builds the Windows plugin for OBS 32.2.2 and OBS 33.0.1 on every push to `main`. It publishes a Release only after both builds succeed, when a version tag is pushed or a manual run includes a release tag. If publishing failed or the version tag was deleted, open **Actions → Windows OBS packages → Run workflow**, choose `main`, enter the version tag, and start the workflow again. The workflow rebuilds both packages and creates a missing tag from `main` before publishing. Each Release contains the two Windows installers, their ZIP packages, and SHA-256 checksum files.
 
 ### For developers
 
@@ -58,8 +58,8 @@ Un compte à rebours pour OBS Studio, que vous contrôlez directement dans OBS. 
 
 Téléchargez la dernière version depuis les [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest). Choisissez l’installateur correspondant à votre version d’OBS :
 
-- **OBS 32 :** `CountdownStudio-0.1.0-OBS32-Windows-x64-Setup.exe`
-- **OBS 33 ou plus récent :** `CountdownStudio-0.1.0-OBS33-Windows-x64-Setup.exe`
+- **OBS 32 :** `CountdownStudio-0.1.1-OBS32-Windows-x64-Setup.exe`
+- **OBS 33 ou plus récent :** `CountdownStudio-0.1.1-OBS33-Windows-x64-Setup.exe`
 
 Puis :
 
@@ -74,7 +74,7 @@ Le dépôt est privé : vous devez y avoir accès pour télécharger les fichier
 
 1. Dans OBS, ouvrez **Sources**, cliquez sur **+**, puis choisissez **Minuteur Countdown Studio**.
 2. Ouvrez les **Propriétés** de la source pour régler la durée de départ et l’apparence.
-3. Sélectionnez la source minuteur dans **Sources**. Utilisez les petits boutons à côté de **Propriétés** et **Filtres** pour démarrer, mettre en pause, réinitialiser ou ajouter 1 ou 5 minutes. Cliquez sur **+…** pour ajouter le nombre de minutes souhaité pendant le décompte. Si ces boutons ne sont pas disponibles, ouvrez **Docks → Commandes Countdown Studio**.
+3. Sélectionnez la source minuteur dans **Sources**. Utilisez les petits boutons à côté de **Propriétés** et **Filtres** pour démarrer, mettre en pause, réinitialiser ou ajouter 1 ou 5 minutes. Cliquez sur **+…** pour ajouter le nombre de minutes souhaité pendant le décompte. Si ces boutons ne sont pas disponibles, ouvrez **Docks → Commandes Countdown Studio**. Si le groupe **Animation** manque aussi dans les propriétés, le plugin mis à jour ne s’est pas chargé; vérifiez dans le journal OBS que `[Countdown Studio] countdown source registered` apparaît après avoir installé le paquet correspondant à votre version d’OBS.
 
 ### Modifier l’apparence ou utiliser votre police
 
@@ -92,7 +92,7 @@ Des installateurs Windows sont fournis pour OBS 32 et OBS 33. Le plugin n’a pa
 
 ### Publier une version
 
-Les responsables du projet peuvent publier une version en poussant son étiquette Git correspondante (par exemple, `v0.1.0`). GitHub Actions compile le plugin Windows pour OBS 32.2.2 et OBS 33.0.1 à chaque push sur `main`. Il publie une Release seulement après la réussite des deux compilations, lors d’un push d’étiquette de version ou d’une exécution manuelle avec une étiquette saisie. Si la publication a échoué ou si l’étiquette de version a été supprimée, ouvrez **Actions → Windows OBS packages → Run workflow**, choisissez `main`, saisissez l’étiquette de version, puis relancez le workflow. Il recompile les deux paquets et recrée l’étiquette manquante depuis `main` avant la publication. Chaque Release contient les deux installateurs Windows, leurs archives ZIP et les fichiers de sommes SHA-256.
+Les responsables du projet peuvent publier une version en poussant son étiquette Git correspondante (par exemple, `v0.1.1`). GitHub Actions compile le plugin Windows pour OBS 32.2.2 et OBS 33.0.1 à chaque push sur `main`. Il publie une Release seulement après la réussite des deux compilations, lors d’un push d’étiquette de version ou d’une exécution manuelle avec une étiquette saisie. Si la publication a échoué ou si l’étiquette de version a été supprimée, ouvrez **Actions → Windows OBS packages → Run workflow**, choisissez `main`, saisissez l’étiquette de version, puis relancez le workflow. Il recompile les deux paquets et recrée l’étiquette manquante depuis `main` avant la publication. Chaque Release contient les deux installateurs Windows, leurs archives ZIP et les fichiers de sommes SHA-256.
 
 ### Pour les développeurs
 
