@@ -21,7 +21,7 @@ The version numbers above are the SDK baselines used by the Windows workflow; co
 
 ### GitHub Releases
 
-`.github/workflows/windows-release.yml` builds both Windows packages when run manually. A matching version tag builds them and publishes a GitHub Release after both builds succeed. The PowerShell build script verifies pinned dependency hashes, builds the OBS development libraries and plugin, then checks that the ZIP contains the correct plugin layout, locale files, and license. The workflow publishes:
+`.github/workflows/windows-release.yml` builds both Windows packages on every push to `main` and when run manually. A matching version tag builds them and publishes a GitHub Release after both builds succeed. The PowerShell build script verifies pinned dependency hashes, builds the OBS development libraries and plugin, then checks that the ZIP contains the correct plugin layout, locale files, and license. The workflow publishes:
 
 - `CountdownStudio-<version>-OBS32-Windows-x64-Setup.exe`
 - `CountdownStudio-<version>-OBS32-Windows-x64.zip`
@@ -56,7 +56,7 @@ Les versions indiquées sont les bases SDK utilisées par le workflow Windows; l
 
 ### GitHub Releases
 
-`.github/workflows/windows-release.yml` compile les deux paquets Windows lors d’un lancement manuel. Une étiquette de version correspondante les compile puis publie une Release GitHub lorsque les deux compilations réussissent. Le script PowerShell vérifie les sommes des dépendances épinglées, compile les bibliothèques de développement OBS et le plugin, puis contrôle que le ZIP contient le bon format de plugin, les fichiers de langue et la licence. Le workflow publie :
+`.github/workflows/windows-release.yml` compile les deux paquets Windows à chaque poussée sur `main` et lors d’un lancement manuel. Une étiquette de version correspondante les compile puis publie une Release GitHub lorsque les deux compilations réussissent. Le script PowerShell vérifie les sommes des dépendances épinglées, compile les bibliothèques de développement OBS et le plugin, puis contrôle que le ZIP contient le bon format de plugin, les fichiers de langue et la licence. Le workflow publie :
 
 - `CountdownStudio-<version>-OBS32-Windows-x64-Setup.exe`
 - `CountdownStudio-<version>-OBS32-Windows-x64.zip`

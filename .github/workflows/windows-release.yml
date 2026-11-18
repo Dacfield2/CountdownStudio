@@ -2,6 +2,8 @@ name: Windows OBS packages
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
