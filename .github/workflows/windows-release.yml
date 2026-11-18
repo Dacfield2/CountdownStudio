@@ -104,6 +104,6 @@ jobs:
           test "${#release_files[@]}" -eq 6
 
           gh release create "$RELEASE_TAG" "${release_files[@]}" \
-            --verify-tag \
+            --target main \
             --title "Countdown Studio ${RELEASE_TAG#v}" \
             --notes-file release-notes.md
