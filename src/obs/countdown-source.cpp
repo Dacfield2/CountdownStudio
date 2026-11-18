@@ -93,11 +93,14 @@ public:
               static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100))),
           time_format_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2))),
           end_message_(read_end_message(settings)),
-          start_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 8))),
-          change_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 8))),
+          start_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 10))),
+          change_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 10))),
           animation_duration_ms_(static_cast<int>(std::clamp<int64_t>(
               obs_data_get_int(settings, "animation_duration_ms"), 100, 3000))),
           animation_easing_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "animation_easing"), 0, 2))),
+          animate_digits_only_(obs_data_get_bool(settings, "animate_digits_only")),
+          animation_stagger_ms_(static_cast<int>(std::clamp<int64_t>(
+              obs_data_get_int(settings, "animation_stagger_ms"), 0, 250))),
           timer_(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_})),
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
@@ -138,24 +141,32 @@ public:
         time_format_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
         end_message_ = read_end_message(settings);
         const int new_start_animation = static_cast<int>(
-            std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 8));
+            std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 10));
         const int new_change_animation = static_cast<int>(
-            std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 8));
+            std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 10));
         const int new_animation_duration = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "animation_duration_ms"), 100, 3000));
         const int new_animation_easing = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "animation_easing"), 0, 2));
+        const bool new_animate_digits_only = obs_data_get_bool(settings, "animate_digits_only");
+        const int new_animation_stagger = static_cast<int>(
+            std::clamp<int64_t>(obs_data_get_int(settings, "animation_stagger_ms"), 0, 250));
         const bool animation_settings_changed = new_start_animation != start_animation_
                                                 || new_change_animation != change_animation_
                                                 || new_animation_duration != animation_duration_ms_
-                                                || new_animation_easing != animation_easing_;
+                                                || new_animation_easing != animation_easing_
+                                                || new_animate_digits_only != animate_digits_only_
+                                                || new_animation_stagger != animation_stagger_ms_;
         start_animation_ = new_start_animation;
         change_animation_ = new_change_animation;
         animation_duration_ms_ = new_animation_duration;
         animation_easing_ = new_animation_easing;
+        animate_digits_only_ = new_animate_digits_only;
+        animation_stagger_ms_ = new_animation_stagger;
         if (animation_settings_changed) {
             animation_active_ = false;
             active_animation_preset_ = 0;
+            active_animation_is_change_ = false;
             previous_text_ = current_text_;
         }
         read_font_settings(settings);
@@ -179,6 +190,7 @@ public:
             if (animation_elapsed_seconds_ >= duration_seconds) {
                 animation_active_ = false;
                 active_animation_preset_ = 0;
+                active_animation_is_change_ = false;
                 previous_text_ = current_text_;
             }
         }
@@ -276,11 +288,13 @@ private:
 
         previous_text_ = current_text_;
         current_text_ = next_text;
+        active_animation_is_change_ = true;
         active_animation_preset_ = change_animation_;
         animation_elapsed_seconds_ = 0.0;
         animation_active_ = active_animation_preset_ != 0 && animation_duration_ms_ > 0;
         if (!animation_active_) {
             active_animation_preset_ = 0;
+            active_animation_is_change_ = false;
             previous_text_ = current_text_;
         }
     }
@@ -288,6 +302,7 @@ private:
     void trigger_start_animation_locked()
     {
         previous_text_ = current_text_;
+        active_animation_is_change_ = false;
         active_animation_preset_ = start_animation_;
         animation_elapsed_seconds_ = 0.0;
         animation_active_ = active_animation_preset_ != 0 && animation_duration_ms_ > 0;
@@ -429,8 +444,201 @@ private:
             painter.restore();
         };
 
+        auto ease_progress = [&](double value) {
+            if (animation_easing_ == 1) {
+                return 1.0 - std::pow(1.0 - value, 3.0);
+            }
+            if (animation_easing_ == 2) {
+                return value * value * (3.0 - 2.0 * value);
+            }
+            return value;
+        };
+
+        auto draw_digit_transition = [&]() {
+            if (!animation_active_ || !active_animation_is_change_ || !animate_digits_only_
+                || timer_.state() == Countdown::State::finished
+                || display_text.size() != previous_text.size()) {
+                return false;
+            }
+
+            for (int index = 0; index < display_text.size(); ++index) {
+                const QChar previous = previous_text[index];
+                const QChar current = display_text[index];
+                if ((previous == QLatin1Char(':')) != (current == QLatin1Char(':'))) {
+                    return false;
+                }
+                if (previous != QLatin1Char(':') && (!previous.isDigit() || !current.isDigit())) {
+                    return false;
+                }
+            }
+
+            QFontMetricsF metrics(font);
+            double digit_cell_width = 0.0;
+            for (int digit = 0; digit <= 9; ++digit) {
+                digit_cell_width = std::max(digit_cell_width,
+                                            metrics.horizontalAdvance(QString::number(digit)));
+            }
+            const double separator_width = metrics.horizontalAdvance(QStringLiteral(":"));
+            double total_width = 0.0;
+            for (int index = 0; index < display_text.size(); ++index) {
+                total_width += display_text[index] == QLatin1Char(':') ? separator_width : digit_cell_width;
+            }
+            double cell_x = center_x - total_width / 2.0;
+            const double line_top = (static_cast<double>(kCanvasHeight) - metrics.height()) / 2.0;
+            const double baseline = line_top + metrics.ascent();
+            const double cell_height = metrics.height();
+            constexpr double kPi = 3.14159265358979323846;
+            std::vector<int> changed_digits_from_right;
+            for (int index = display_text.size() - 1; index >= 0; --index) {
+                if (previous_text[index] != display_text[index]) {
+                    changed_digits_from_right.push_back(index);
+                }
+            }
+            const int changed_count = static_cast<int>(changed_digits_from_right.size());
+            const double total_stagger = std::min(
+                0.8, static_cast<double>(animation_stagger_ms_) * std::max(0, changed_count - 1)
+                         / static_cast<double>(animation_duration_ms_));
+
+            auto draw_glyph = [&](QChar character, double x, double width, double opacity,
+                                  double scale_x, double scale_y, double offset_x, double offset_y,
+                                  double reveal_fraction) {
+                if (opacity <= 0.0 || reveal_fraction <= 0.0) {
+                    return;
+                }
+                const QString glyph(character);
+                const double glyph_width = metrics.horizontalAdvance(glyph);
+                const double glyph_x = x + (width - glyph_width) / 2.0;
+                const double glyph_center_x = x + width / 2.0;
+                painter.save();
+                painter.setFont(font);
+                painter.setPen(qcolor_from_obs_rgba(text_color_));
+                painter.setOpacity(std::clamp(opacity, 0.0, 1.0));
+                painter.setClipRect(QRectF(x, 0.0, width * std::clamp(reveal_fraction, 0.0, 1.0),
+                                           static_cast<double>(kCanvasHeight)), Qt::IntersectClip);
+                painter.translate(glyph_center_x + offset_x, center_y + offset_y);
+                painter.scale(scale_x, scale_y);
+                painter.translate(-glyph_center_x, -center_y);
+                painter.drawText(QPointF(glyph_x, baseline), glyph);
+                painter.restore();
+            };
+
+            for (int index = 0; index < display_text.size(); ++index) {
+                const QChar previous = previous_text[index];
+                const QChar current = display_text[index];
+                const bool is_separator = current == QLatin1Char(':');
+                const double cell_width = is_separator ? separator_width : digit_cell_width;
+                if (previous == current || is_separator) {
+                    draw_glyph(current, cell_x, cell_width, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0);
+                } else {
+                    const auto rank = std::find(changed_digits_from_right.begin(),
+                                                changed_digits_from_right.end(), index)
+                                      - changed_digits_from_right.begin();
+                    const double start_delay = changed_count > 1
+                                                   ? total_stagger * static_cast<double>(rank)
+                                                         / static_cast<double>(changed_count - 1)
+                                                   : 0.0;
+                    const double local_raw = std::clamp(
+                        (raw_progress - start_delay) / std::max(0.001, 1.0 - start_delay), 0.0, 1.0);
+                    const double digit_progress = ease_progress(local_raw);
+                    const double outgoing_opacity = 1.0 - digit_progress;
+                    const double incoming_opacity = digit_progress;
+                    switch (active_animation_preset_) {
+                    case 1: // Fade
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, incoming_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
+                        break;
+                    case 2: // Slide up
+                        draw_glyph(previous, cell_x, cell_width, 1.0, 1.0, 1.0, 0.0,
+                                   -cell_height * digit_progress, 1.0);
+                        draw_glyph(current, cell_x, cell_width, 1.0, 1.0, 1.0, 0.0,
+                                   cell_height * (1.0 - digit_progress), 1.0);
+                        break;
+                    case 3: // Slide left
+                        draw_glyph(previous, cell_x, cell_width, 1.0, 1.0, 1.0,
+                                   -cell_width * digit_progress, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, 1.0, 1.0, 1.0,
+                                   cell_width * (1.0 - digit_progress), 0.0, 1.0);
+                        break;
+                    case 4: // Zoom
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity,
+                                   1.0 + 0.12 * digit_progress, 1.0 + 0.12 * digit_progress, 0.0, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, incoming_opacity,
+                                   0.75 + 0.25 * digit_progress, 0.75 + 0.25 * digit_progress, 0.0, 0.0, 1.0);
+                        break;
+                    case 5: { // Bounce
+                        const double bounce = 1.0 - std::exp(-7.0 * local_raw) * std::cos(10.0 * local_raw);
+                        const double scale = 0.78 + 0.22 * bounce;
+                        const double offset_y = cell_height * 0.22 * (1.0 - bounce);
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity,
+                                   1.0, 1.0, 0.0, -offset_y * 0.35, 1.0);
+                        draw_glyph(current, cell_x, cell_width, incoming_opacity,
+                                   scale, scale, 0.0, offset_y, 1.0);
+                        break;
+                    }
+                    case 6: // Pulse
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, incoming_opacity,
+                                   1.0 + 0.16 * std::sin(local_raw * kPi) * (1.0 - local_raw),
+                                   1.0 + 0.16 * std::sin(local_raw * kPi) * (1.0 - local_raw), 0.0, 0.0, 1.0);
+                        break;
+                    case 7: // Reveal
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, 1.0, 1.0, 1.0, 0.0, 0.0, digit_progress);
+                        break;
+                    case 8: { // Shake
+                        const double shake = cell_width * 0.18 * std::sin(local_raw * 10.0 * kPi)
+                                             * (1.0 - local_raw);
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity,
+                                   1.0, 1.0, -shake * 0.35, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, incoming_opacity, 1.0, 1.0, shake, 0.0, 1.0);
+                        break;
+                    }
+                    case 9: // Flip
+                        if (local_raw < 0.5) {
+                            draw_glyph(previous, cell_x, cell_width, 1.0, 1.0,
+                                       std::max(0.01, 1.0 - 2.0 * local_raw), 0.0, 0.0, 1.0);
+                        } else {
+                            draw_glyph(current, cell_x, cell_width, 1.0, 1.0,
+                                       std::max(0.01, 2.0 * local_raw - 1.0), 0.0, 0.0, 1.0);
+                        }
+                        break;
+                    case 10: { // Roll
+                        const double direction = current.digitValue() < previous.digitValue() ? -1.0 : 1.0;
+                        draw_glyph(previous, cell_x, cell_width, 1.0, 1.0, 1.0, 0.0,
+                                   direction * cell_height * digit_progress, 1.0);
+                        draw_glyph(current, cell_x, cell_width, 1.0, 1.0, 1.0, 0.0,
+                                   -direction * cell_height * (1.0 - digit_progress), 1.0);
+                        break;
+                    }
+                    default:
+                        draw_glyph(previous, cell_x, cell_width, outgoing_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
+                        draw_glyph(current, cell_x, cell_width, incoming_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
+                        break;
+                    }
+                }
+                cell_x += cell_width;
+            }
+            return changed_count > 0;
+        };
+
+        auto draw_full_flip = [&](const QString &text, double scale_y) {
+            if (text.isEmpty()) {
+                return;
+            }
+            painter.save();
+            painter.setFont(font);
+            painter.setPen(qcolor_from_obs_rgba(text_color_));
+            painter.translate(center_x, center_y);
+            painter.scale(1.0, scale_y);
+            painter.translate(-center_x, -center_y);
+            painter.drawText(image.rect(), Qt::AlignCenter, text);
+            painter.restore();
+        };
+
         if (!animation_active_) {
             draw_layer(display_text, 1.0, 1.0, 0.0, 0.0, false);
+        } else if (draw_digit_transition()) {
+            // Unchanged digits and separators remain fixed while changed digits animate.
         } else {
             const double outgoing_opacity = 1.0 - progress;
             const double incoming_opacity = progress;
@@ -452,7 +660,7 @@ private:
                 draw_layer(previous_text, outgoing_opacity, 1.0 + 0.12 * progress, 0.0, 0.0, false);
                 draw_layer(display_text, incoming_opacity, 0.78 + 0.22 * progress, 0.0, 0.0, false);
                 break;
-            case 5: { // Bounce
+            case 5: {
                 const double bounce = 1.0 - std::exp(-7.0 * raw_progress) * std::cos(10.0 * raw_progress);
                 const double scale = 0.78 + 0.22 * bounce;
                 const double offset_y = 30.0 * (1.0 - bounce);
@@ -460,21 +668,33 @@ private:
                 draw_layer(display_text, incoming_opacity, scale, 0.0, offset_y, false);
                 break;
             }
-            case 6: // Pulse
+            case 6:
                 draw_layer(previous_text, outgoing_opacity, 1.0, 0.0, 0.0, false);
                 draw_layer(display_text, incoming_opacity,
                            1.0 + 0.12 * std::sin(raw_progress * kPi) * (1.0 - raw_progress), 0.0, 0.0, false);
                 break;
-            case 7: // Reveal
+            case 7:
                 draw_layer(previous_text, outgoing_opacity, 1.0, 0.0, 0.0, false);
                 draw_layer(display_text, 1.0, 1.0, 0.0, 0.0, true);
                 break;
-            case 8: { // Shake
+            case 8: {
                 const double shake = 15.0 * std::sin(raw_progress * 10.0 * kPi) * (1.0 - raw_progress);
                 draw_layer(previous_text, outgoing_opacity, 1.0, -shake * 0.35, 0.0, false);
                 draw_layer(display_text, incoming_opacity, 1.0, shake, 0.0, false);
                 break;
             }
+            case 9: // Flip
+                if (progress < 0.5) {
+                    draw_full_flip(previous_text, std::max(0.01, 1.0 - 2.0 * progress));
+                } else {
+                    draw_full_flip(display_text, std::max(0.01, 2.0 * progress - 1.0));
+                }
+                break;
+            case 10: // Roll
+                draw_layer(previous_text, 1.0, 1.0, 0.0, -static_cast<double>(kCanvasHeight) * progress, false);
+                draw_layer(display_text, 1.0, 1.0, 0.0,
+                           static_cast<double>(kCanvasHeight) * (1.0 - progress), false);
+                break;
             default:
                 draw_layer(display_text, 1.0, 1.0, 0.0, 0.0, false);
                 break;
@@ -499,8 +719,11 @@ private:
     int change_animation_;
     int animation_duration_ms_;
     int animation_easing_;
+    bool animate_digits_only_;
+    int animation_stagger_ms_;
     int active_animation_preset_{0};
     bool animation_active_{false};
+    bool active_animation_is_change_{false};
     double animation_elapsed_seconds_{0.0};
     std::string current_text_;
     std::string previous_text_;
@@ -582,6 +805,8 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "change_animation", 1);
     obs_data_set_default_int(settings, "animation_duration_ms", 350);
     obs_data_set_default_int(settings, "animation_easing", 1);
+    obs_data_set_default_bool(settings, "animate_digits_only", true);
+    obs_data_set_default_int(settings, "animation_stagger_ms", 40);
 }
 
 bool start_clicked(obs_properties_t *, obs_property_t *, void *data)
@@ -643,14 +868,18 @@ obs_properties_t *source_properties(void *data)
                                                      OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
     const char *animation_names[] = {
         "Animation.None", "Animation.Fade", "Animation.SlideUp", "Animation.SlideLeft",
-        "Animation.Zoom", "Animation.Bounce", "Animation.Pulse", "Animation.Reveal", "Animation.Shake"};
-    for (int preset = 0; preset < 9; ++preset) {
+        "Animation.Zoom", "Animation.Bounce", "Animation.Pulse", "Animation.Reveal", "Animation.Shake",
+        "Animation.Flip", "Animation.Roll"};
+    for (int preset = 0; preset < 11; ++preset) {
         const char *label = obs_module_text(animation_names[preset]);
         obs_property_list_add_int(start_animation, label, preset);
         obs_property_list_add_int(change_animation, label, preset);
     }
+    obs_properties_add_bool(animation, "animate_digits_only", obs_module_text("Settings.AnimateDigitsOnly"));
     obs_properties_add_int_slider(animation, "animation_duration_ms",
                                   obs_module_text("Settings.AnimationDuration"), 100, 3000, 50);
+    obs_properties_add_int_slider(animation, "animation_stagger_ms",
+                                  obs_module_text("Settings.AnimationStagger"), 0, 250, 10);
     auto *easing = obs_properties_add_list(animation, "animation_easing", obs_module_text("Settings.AnimationEasing"),
                                           OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
     obs_property_list_add_int(easing, obs_module_text("Animation.EasingLinear"), 0);

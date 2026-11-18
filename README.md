@@ -34,7 +34,7 @@ To use your own font, choose a `.ttf`, `.otf`, or `.ttc` file in **Custom font f
 
 ### Animate the timer text
 
-In the source **Properties**, open **Animation**. Choose separate effects for when the timer starts and whenever its displayed text changes. Text changes include each second and the final message. Available effects are fade, slide up, slide left, zoom, bounce, pulse, reveal, and shake. Set the transition duration and easing curve there too. All animation is rendered by the native OBS plugin.
+In the source **Properties**, open **Animation**. Choose separate effects for when the timer starts and whenever its displayed text changes. By default, only changed digits animate; unchanged digits and colons stay still. Turn off **Animate changed digits only** to animate the whole timer instead. The end message always animates as a full text. Effects include fade, slide, zoom, bounce, pulse, reveal, shake, flip, and roll. Set the duration, easing, and digit stagger there too. All animation is rendered by the native OBS plugin.
 
 ### Compatibility
 
@@ -84,7 +84,7 @@ Pour utiliser votre police, choisissez un fichier `.ttf`, `.otf` ou `.ttc` dans 
 
 ### Animer le texte du minuteur
 
-Dans les **Propriétés** de la source, ouvrez **Animation**. Choisissez un effet pour le démarrage du minuteur et un autre pour chaque changement du texte affiché. Cela inclut chaque seconde et le message final. Effets disponibles : fondu, glissement vers le haut ou la gauche, zoom, rebond, pulsation, révélation et secousse. Réglez aussi la durée et la courbe d’accélération. Toute l’animation est rendue par le plugin OBS natif.
+Dans les **Propriétés** de la source, ouvrez **Animation**. Choisissez un effet pour le démarrage du minuteur et un autre pour chaque changement. Par défaut, seuls les chiffres modifiés s’animent; les autres chiffres et les deux-points restent fixes. Décochez **Animer uniquement les chiffres modifiés** pour animer tout le minuteur. Le message final s’anime toujours comme un texte complet. Effets disponibles : fondu, glissement, zoom, rebond, pulsation, révélation, secousse, retournement et défilement. Réglez aussi la durée, la courbe d’accélération et le décalage entre les chiffres. Toute l’animation est rendue par le plugin OBS natif.
 
 ### Compatibilité
 
