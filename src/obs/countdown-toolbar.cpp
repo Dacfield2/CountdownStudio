@@ -124,6 +124,7 @@ private:
     {
         obs_source_t *source = get_selected_timer();
         const bool enabled = source != nullptr;
+        setVisible(enabled);
         for (auto *button : findChildren<QToolButton *>()) {
             button->setEnabled(enabled);
         }

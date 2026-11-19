@@ -1,91 +1,61 @@
 # Countdown Studio
 
-A native countdown timer for OBS Studio. Set it up and control it directly inside OBS.
+A native OBS countdown timer with its controls and settings inside OBS.
 
 ## English
 
-### Install on Windows
+### Install
 
-1. Download the installer from [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
-2. Choose the installer for **OBS 32** or **OBS 33 or newer**.
-3. Close OBS, run the installer, then reopen OBS.
+- **Windows:** Download the OBS 32 or OBS 33+ installer from [Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), close OBS, run the installer, and reopen OBS.
+- **Linux:** Download the OBS 32 **legacy** ZIP or OBS 33+ **modern** ZIP, extract it, close OBS, and run `install-linux.sh`. Then reopen OBS.
 
-The repository is private, so you need access to download the installer.
-
-### Install on Linux
-
-1. Download the **modern** ZIP for OBS 33 or newer, or the **legacy** ZIP for OBS 32, from [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
-2. Extract the ZIP and close OBS.
-3. Right-click **install-linux.sh** and choose **Run as a Program**. It installs the plugin for your user; no administrator password is needed. If that option is unavailable, open a terminal in the extracted folder and run `bash install-linux.sh`.
-4. Reopen OBS.
-
-Linux plugin loading has been confirmed on Ubuntu 26.04 with OBS 33. OBS 32 Linux and Flatpak/Snap installations have not been checked.
-
-### Use the timer
+### Use
 
 1. In OBS, add **Countdown Studio Timer** from **Sources → +**.
-2. Open the source properties to set the starting time and appearance.
-3. Select the source to show its controls beside **Properties** and **Filters**. Start, pause, reset, or add 1 or 5 minutes. Use **+…** to add a custom number of minutes while the timer is running.
-
-If the source controls are not visible, open **Docks → Countdown Studio Controls**.
+2. Open **Properties** to set the duration, appearance, end message, and automation.
+3. Select the source to show its buttons beside **Properties** and **Filters**. You can start, pause, reset, or add 1, 5, or a custom number of minutes.
+4. Enable **Start when streaming starts** if the timer should begin with your live. You can choose to reset it first.
+5. Enable up to three **Key moments** to show a message, pause, add one minute, or switch scene when a chosen number of seconds remains.
+6. Optionally choose a scene to switch to after the timer ends, with a delay.
 
 ### Appearance and animation
 
-Set the font, size, colors, transparency, time format, and end message in the source properties. To use a custom font, select a `.ttf`, `.otf`, or `.ttc` file. Keep the file on your computer; the plugin uses it from its current location. Turn on **Text antialiasing** for smoother edges, or turn it off for a sharper pixel look.
+Set the font, size, colors, background, time format, and end message in the source properties. You can use system fonts or select a custom `.ttf`, `.otf`, or `.ttc` font file. Enable anti-aliasing for smoother text edges.
 
-Under **Animation**, choose effects for the timer start and text changes. By default, only changed digits animate, while unchanged digits and colons stay still. Turn off **Animate changed digits only** to animate the whole timer. Choose an effect, duration, easing, and digit stagger. The end message animates as a full text.
+Choose separate animations for starting and changing text. The **Custom** animation lets you combine a starting scale, horizontal and vertical movement, rotation, fade, easing, duration, and digit stagger. Animate only changed digits or the whole timer.
 
-### Compatibility
+### Compatibility and build
 
-Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are compiled against matching OBS SDKs (OBS 32.2.2 on Ubuntu 24.04 and OBS 33.0.1 on Ubuntu 26.04). Download Linux packages from the **Assets** section of a GitHub Release. The **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) also has temporary build packages. Linux ZIPs include a user-level installer for native Ubuntu OBS. Runtime loading was confirmed on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap installations have not been checked. macOS packages are not currently available.
+Windows x64 packages target OBS 32 and OBS 33+. Linux x64 packages are provided for OBS 32 (legacy) and OBS 33+ (modern). Linux loading has been confirmed on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap installations still need validation. macOS packages are not available yet.
 
-### Build from source
-
-See [Build instructions](docs/BUILDING.md).
-
-Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE).
+See [build instructions](docs/BUILDING.md). Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE). The repository is private, so access is required to download packages.
 
 ## Français
 
-Un minuteur natif pour OBS Studio, à configurer et à contrôler directement dans OBS.
+Un minuteur natif pour OBS, avec ses commandes et ses réglages directement dans OBS.
 
-### Installer sous Windows
+### Installation
 
-1. Téléchargez l’installateur depuis les [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
-2. Choisissez celui correspondant à **OBS 32** ou **OBS 33 et versions ultérieures**.
-3. Fermez OBS, lancez l’installateur, puis rouvrez OBS.
+- **Windows :** téléchargez l’installateur OBS 32 ou OBS 33+ depuis les [releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), fermez OBS, lancez l’installateur, puis rouvrez OBS.
+- **Linux :** téléchargez le ZIP **legacy** pour OBS 32 ou **modern** pour OBS 33+, extrayez-le, fermez OBS, puis lancez `install-linux.sh`. Rouvrez OBS ensuite.
 
-Le dépôt est privé : vous devez y avoir accès pour télécharger l’installateur.
-
-### Installer sous Linux
-
-1. Téléchargez le ZIP **modern** pour OBS 33 ou une version ultérieure, ou le ZIP **legacy** pour OBS 32, depuis les [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
-2. Extrayez le ZIP et fermez OBS.
-3. Faites un clic droit sur **install-linux.sh**, puis choisissez **Lancer comme un programme**. Le script installe le plugin dans votre dossier utilisateur, sans mot de passe administrateur. Si cette option n’apparaît pas, ouvrez un terminal dans le dossier extrait et lancez `bash install-linux.sh`.
-4. Rouvrez OBS.
-
-Le chargement du plugin a été confirmé sous Ubuntu 26.04 avec OBS 33. Le paquet Linux OBS 32 et les installations Flatpak/Snap n’ont pas encore été vérifiés.
-
-### Utiliser le minuteur
+### Utilisation
 
 1. Dans OBS, ajoutez **Minuteur Countdown Studio** avec **Sources → +**.
-2. Ouvrez les propriétés de la source pour régler la durée de départ et l’apparence.
-3. Sélectionnez la source pour afficher les commandes à côté de **Propriétés** et **Filtres**. Démarrez, mettez en pause, réinitialisez ou ajoutez 1 ou 5 minutes. Utilisez **+…** pour ajouter le nombre de minutes souhaité pendant le décompte.
-
-Si les commandes ne sont pas visibles, ouvrez **Docks → Commandes Countdown Studio**.
+2. Ouvrez **Propriétés** pour régler la durée, l’apparence, le message de fin et les automatismes.
+3. Sélectionnez la source pour afficher ses boutons à côté de **Propriétés** et **Filtres**. Vous pouvez démarrer, mettre en pause, réinitialiser ou ajouter 1, 5 ou un nombre personnalisé de minutes.
+4. Cochez **Démarrer au lancement du direct** pour lancer le minuteur avec le live. Vous pouvez aussi le réinitialiser avant le démarrage.
+5. Activez jusqu’à trois **Actions aux moments clés** : afficher un message, mettre en pause, ajouter une minute ou changer de scène lorsque le nombre de secondes choisi reste.
+6. Vous pouvez choisir une scène à afficher après la fin du décompte et régler un délai.
 
 ### Apparence et animation
 
-Dans les propriétés de la source, réglez la police, la taille, les couleurs, la transparence, le format du temps et le message de fin. Pour utiliser une police personnalisée, choisissez un fichier `.ttf`, `.otf` ou `.ttc`. Gardez ce fichier sur votre ordinateur : le plugin l’utilise depuis son emplacement actuel. Activez **Lissage des contours du texte (anticrénelage)** pour des bords plus doux, ou désactivez-le pour un rendu plus pixelisé.
+Réglez la police, la taille, les couleurs, l’arrière-plan, le format du temps et le message de fin dans les propriétés. Vous pouvez utiliser les polices du système ou choisir un fichier personnalisé `.ttf`, `.otf` ou `.ttc`. Activez l’anticrénelage pour lisser les contours.
 
-Dans **Animation**, choisissez les effets au démarrage et lors des changements de texte. Par défaut, seuls les chiffres modifiés s’animent; les autres chiffres et les deux-points restent fixes. Décochez **Animer uniquement les chiffres modifiés** pour animer tout le minuteur. Réglez l’effet, la durée, la courbe d’accélération et le décalage entre les chiffres. Le message de fin s’anime comme un texte complet.
+Choisissez une animation pour le démarrage et une autre pour les changements de texte. L’animation **Personnalisée** combine taille de départ, déplacement horizontal et vertical, rotation, fondu, accélération, durée et décalage des chiffres. Animez seulement les chiffres modifiés ou le minuteur entier.
 
-### Compatibilité
+### Compatibilité et compilation
 
-Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés avec les SDK OBS correspondants (OBS 32.2.2 sous Ubuntu 24.04 et OBS 33.0.1 sous Ubuntu 26.04). Téléchargez les paquets Linux dans la section **Assets** d’une release GitHub. La section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) contient aussi les paquets temporaires de compilation. Les ZIP Linux incluent un installateur pour OBS natif sous Ubuntu. Le chargement a été confirmé sous Ubuntu 26.04 avec OBS 33; le paquet Linux OBS 32 et les installations Flatpak/Snap restent à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
+Des paquets Windows x64 sont prévus pour OBS 32 et OBS 33+. Les paquets Linux x64 existent pour OBS 32 (**legacy**) et OBS 33+ (**modern**). Le chargement Linux a été confirmé sous Ubuntu 26.04 avec OBS 33; OBS 32 Linux et Flatpak/Snap restent à vérifier. Le paquet macOS n’est pas encore disponible.
 
-### Compiler le projet
-
-Consultez les [instructions de compilation](docs/BUILDING.md).
-
-Countdown Studio est distribué sous licence [GPL-2.0-or-later](LICENSE).
+Consultez les [instructions de compilation](docs/BUILDING.md). Countdown Studio est sous licence [GPL-2.0-or-later](LICENSE). Le dépôt est privé : il faut y avoir accès pour télécharger les paquets.

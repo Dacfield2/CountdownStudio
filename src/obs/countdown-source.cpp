@@ -4,20 +4,26 @@
 
 #include <graphics/graphics.h>
 #include <obs-data.h>
+#include <obs-frontend-api.h>
 #include <obs-module.h>
 #include <obs-properties.h>
 #include <obs-source.h>
+#include <obs.h>
 
+#include <QByteArray>
 #include <QColor>
 #include <QFont>
 #include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QImage>
+#include <QMetaObject>
+#include <QObject>
 #include <QPainter>
 #include <QString>
 #include <QStringList>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -40,6 +46,86 @@ constexpr int64_t kMaximumDurationSeconds = 604800;
 constexpr std::size_t kChannels = 4;
 constexpr uint32_t kDefaultTextColor = 0xFFFFFFFF;
 constexpr uint32_t kDefaultBackgroundColor = 0x99000000;
+constexpr int kMomentCount = 3;
+constexpr int kMomentShowMessage = 0;
+constexpr int kMomentPause = 1;
+constexpr int kMomentAddMinute = 2;
+constexpr int kMomentSwitchScene = 3;
+
+struct MomentRule {
+    bool enabled{false};
+    int64_t seconds{0};
+    int action{kMomentShowMessage};
+    std::string message;
+    int message_duration_seconds{3};
+    std::string scene;
+
+    bool operator==(const MomentRule &) const = default;
+};
+
+std::string read_string_setting(obs_data_t *settings, const char *name)
+{
+    const char *value = obs_data_get_string(settings, name);
+    return value != nullptr ? value : "";
+}
+
+std::array<MomentRule, kMomentCount> read_moment_rules(obs_data_t *settings)
+{
+    std::array<MomentRule, kMomentCount> rules{};
+    for (int index = 0; index < kMomentCount; ++index) {
+        const std::string prefix = "moment_" + std::to_string(index + 1);
+        const std::string enabled_key = prefix + "_enabled";
+        const std::string seconds_key = prefix + "_seconds";
+        const std::string action_key = prefix + "_action";
+        const std::string message_key = prefix + "_message";
+        const std::string duration_key = prefix + "_message_duration_seconds";
+        const std::string scene_key = prefix + "_scene";
+        rules[index].enabled = obs_data_get_bool(settings, enabled_key.c_str());
+        rules[index].seconds = std::clamp<int64_t>(obs_data_get_int(settings, seconds_key.c_str()), 1,
+                                                   kMaximumDurationSeconds);
+        rules[index].action = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, action_key.c_str()),
+                                                                   kMomentShowMessage, kMomentSwitchScene));
+        rules[index].message = read_string_setting(settings, message_key.c_str());
+        rules[index].message_duration_seconds = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, duration_key.c_str()), 1, 30));
+        rules[index].scene = read_string_setting(settings, scene_key.c_str());
+    }
+    return rules;
+}
+
+void add_scene_list(obs_properties_t *properties, const char *name, const char *label)
+{
+    obs_property_t *list = obs_properties_add_list(properties, name, label, OBS_COMBO_TYPE_LIST,
+                                                   OBS_COMBO_FORMAT_STRING);
+    obs_property_list_add_string(list, obs_module_text("Settings.NoScene"), "");
+    struct obs_frontend_source_list scenes = {};
+    obs_frontend_get_scenes(&scenes);
+    for (size_t index = 0; index < scenes.sources.num; ++index) {
+        obs_source_t *scene = scenes.sources.array[index];
+        obs_property_list_add_string(list, obs_source_get_name(scene), obs_source_get_name(scene));
+    }
+    obs_frontend_source_list_free(&scenes);
+}
+
+void queue_scene_switch(const std::string &name)
+{
+    if (name.empty()) {
+        return;
+    }
+    auto *main_window = static_cast<QObject *>(obs_frontend_get_main_window());
+    if (main_window == nullptr) {
+        return;
+    }
+    const QString scene_name = QString::fromUtf8(name.c_str());
+    QMetaObject::invokeMethod(main_window, [scene_name]() {
+        const QByteArray scene_utf8 = scene_name.toUtf8();
+        obs_source_t *scene = obs_get_source_by_name(scene_utf8.constData());
+        if (scene != nullptr) {
+            obs_frontend_set_current_scene(scene);
+            obs_source_release(scene);
+        }
+    }, Qt::QueuedConnection);
+}
 
 QColor qcolor_from_obs_rgba(uint32_t color)
 {
@@ -86,6 +172,7 @@ public:
     explicit CountdownSource(obs_data_t *settings)
         : duration_seconds_(read_duration(settings)),
           auto_start_(obs_data_get_bool(settings, "auto_start")),
+          start_on_stream_start_(obs_data_get_bool(settings, "start_on_stream_start")),
           show_background_(obs_data_get_bool(settings, "show_background")),
           antialiasing_(obs_data_get_bool(settings, "antialiasing")),
           text_color_(static_cast<uint32_t>(obs_data_get_int(settings, "text_color"))),
@@ -94,24 +181,38 @@ public:
               static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100))),
           time_format_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2))),
           end_message_(read_end_message(settings)),
-          start_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 10))),
-          change_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 10))),
+          switch_scene_on_end_(obs_data_get_bool(settings, "switch_scene_on_end")),
+          end_scene_delay_seconds_(static_cast<int>(std::clamp<int64_t>(
+              obs_data_get_int(settings, "end_scene_delay_seconds"), 0, 3600))),
+          end_scene_name_(read_string_setting(settings, "end_scene_name")),
+          moments_(read_moment_rules(settings)),
+          start_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 11))),
+          change_animation_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 11))),
           animation_duration_ms_(static_cast<int>(std::clamp<int64_t>(
               obs_data_get_int(settings, "animation_duration_ms"), 100, 3000))),
           animation_easing_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "animation_easing"), 0, 2))),
           animate_digits_only_(obs_data_get_bool(settings, "animate_digits_only")),
           animation_stagger_ms_(static_cast<int>(std::clamp<int64_t>(
               obs_data_get_int(settings, "animation_stagger_ms"), 0, 250))),
+          custom_animation_scale_start_percent_(static_cast<int>(std::clamp<int64_t>(
+              obs_data_get_int(settings, "animation_custom_scale_start_percent"), 25, 200))),
+          custom_animation_offset_x_(static_cast<int>(std::clamp<int64_t>(
+              obs_data_get_int(settings, "animation_custom_offset_x"), -300, 300))),
+          custom_animation_offset_y_(static_cast<int>(std::clamp<int64_t>(
+              obs_data_get_int(settings, "animation_custom_offset_y"), -300, 300))),
+          custom_animation_rotation_(static_cast<int>(std::clamp<int64_t>(
+              obs_data_get_int(settings, "animation_custom_rotation"), -180, 180))),
+          custom_animation_fade_(obs_data_get_bool(settings, "animation_custom_fade")),
           timer_(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_})),
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
         read_font_settings(settings);
-        if (auto_start_) {
+        if (auto_start_ && !start_on_stream_start_) {
             timer_.start();
         }
         current_text_ = current_timer_text_locked();
         previous_text_ = current_text_;
-        if (auto_start_) {
+        if (auto_start_ && !start_on_stream_start_) {
             trigger_start_animation_locked();
         }
         render_pixels_locked();
@@ -134,6 +235,7 @@ public:
         std::lock_guard lock(mutex_);
         const auto new_duration = read_duration(settings);
         const auto new_auto_start = obs_data_get_bool(settings, "auto_start");
+        const auto new_start_on_stream_start = obs_data_get_bool(settings, "start_on_stream_start");
         show_background_ = obs_data_get_bool(settings, "show_background");
         antialiasing_ = obs_data_get_bool(settings, "antialiasing");
         text_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "text_color"));
@@ -142,10 +244,27 @@ public:
             std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
         time_format_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
         end_message_ = read_end_message(settings);
+        const bool new_switch_scene_on_end = obs_data_get_bool(settings, "switch_scene_on_end");
+        const int new_end_scene_delay = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "end_scene_delay_seconds"), 0, 3600));
+        const std::string new_end_scene_name = read_string_setting(settings, "end_scene_name");
+        if (new_switch_scene_on_end != switch_scene_on_end_ || new_end_scene_delay != end_scene_delay_seconds_
+            || new_end_scene_name != end_scene_name_) {
+            end_scene_elapsed_seconds_ = 0.0;
+            end_scene_fired_ = false;
+        }
+        switch_scene_on_end_ = new_switch_scene_on_end;
+        end_scene_delay_seconds_ = new_end_scene_delay;
+        end_scene_name_ = new_end_scene_name;
+        const auto new_moments = read_moment_rules(settings);
+        if (new_moments != moments_) {
+            moments_ = new_moments;
+            moment_fired_.fill(false);
+        }
         const int new_start_animation = static_cast<int>(
-            std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 10));
+            std::clamp<int64_t>(obs_data_get_int(settings, "start_animation"), 0, 11));
         const int new_change_animation = static_cast<int>(
-            std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 10));
+            std::clamp<int64_t>(obs_data_get_int(settings, "change_animation"), 0, 11));
         const int new_animation_duration = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "animation_duration_ms"), 100, 3000));
         const int new_animation_easing = static_cast<int>(
@@ -153,7 +272,21 @@ public:
         const bool new_animate_digits_only = obs_data_get_bool(settings, "animate_digits_only");
         const int new_animation_stagger = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "animation_stagger_ms"), 0, 250));
-        const bool animation_settings_changed = new_start_animation != start_animation_
+        const int new_custom_scale = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "animation_custom_scale_start_percent"), 25, 200));
+        const int new_custom_offset_x = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "animation_custom_offset_x"), -300, 300));
+        const int new_custom_offset_y = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "animation_custom_offset_y"), -300, 300));
+        const int new_custom_rotation = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "animation_custom_rotation"), -180, 180));
+        const bool new_custom_fade = obs_data_get_bool(settings, "animation_custom_fade");
+        const bool animation_settings_changed = new_custom_scale != custom_animation_scale_start_percent_
+                                                || new_custom_offset_x != custom_animation_offset_x_
+                                                || new_custom_offset_y != custom_animation_offset_y_
+                                                || new_custom_rotation != custom_animation_rotation_
+                                                || new_custom_fade != custom_animation_fade_
+                                                || new_start_animation != start_animation_
                                                 || new_change_animation != change_animation_
                                                 || new_animation_duration != animation_duration_ms_
                                                 || new_animation_easing != animation_easing_
@@ -165,6 +298,11 @@ public:
         animation_easing_ = new_animation_easing;
         animate_digits_only_ = new_animate_digits_only;
         animation_stagger_ms_ = new_animation_stagger;
+        custom_animation_scale_start_percent_ = new_custom_scale;
+        custom_animation_offset_x_ = new_custom_offset_x;
+        custom_animation_offset_y_ = new_custom_offset_y;
+        custom_animation_rotation_ = new_custom_rotation;
+        custom_animation_fade_ = new_custom_fade;
         if (animation_settings_changed) {
             animation_active_ = false;
             active_animation_preset_ = 0;
@@ -173,10 +311,12 @@ public:
         }
         read_font_settings(settings);
 
-        if (new_duration != duration_seconds_ || new_auto_start != auto_start_) {
+        if (new_duration != duration_seconds_ || new_auto_start != auto_start_
+            || new_start_on_stream_start != start_on_stream_start_) {
             duration_seconds_ = new_duration;
             auto_start_ = new_auto_start;
-            reset_timer_locked(auto_start_);
+            start_on_stream_start_ = new_start_on_stream_start;
+            reset_timer_locked(auto_start_ && !start_on_stream_start_);
         } else {
             render_pixels_locked();
         }
@@ -184,21 +324,85 @@ public:
 
     void tick(float seconds)
     {
-        std::lock_guard lock(mutex_);
-        const bool was_animating = animation_active_;
-        if (animation_active_) {
-            animation_elapsed_seconds_ += std::max(0.0, static_cast<double>(seconds));
-            const double duration_seconds = static_cast<double>(animation_duration_ms_) / 1000.0;
-            if (animation_elapsed_seconds_ >= duration_seconds) {
-                animation_active_ = false;
-                active_animation_preset_ = 0;
-                active_animation_is_change_ = false;
-                previous_text_ = current_text_;
+        const double delta_seconds = std::max(0.0, static_cast<double>(seconds));
+        std::vector<std::string> scenes_to_switch;
+        {
+            std::lock_guard lock(mutex_);
+            const bool was_animating = animation_active_;
+            bool should_render = false;
+            if (moment_overlay_remaining_seconds_ > 0.0) {
+                moment_overlay_remaining_seconds_ = std::max(0.0, moment_overlay_remaining_seconds_ - delta_seconds);
+                if (moment_overlay_remaining_seconds_ == 0.0) {
+                    moment_overlay_text_.clear();
+                    refresh_display_text_locked();
+                    should_render = true;
+                }
+            }
+
+            if (timer_.state() == Countdown::State::running) {
+                const int64_t remaining_seconds = display_seconds(timer_.remaining());
+                for (int index = 0; index < kMomentCount; ++index) {
+                    const MomentRule &rule = moments_[index];
+                    if (!rule.enabled || moment_fired_[index] || remaining_seconds > rule.seconds) {
+                        continue;
+                    }
+                    moment_fired_[index] = true;
+                    switch (rule.action) {
+                    case kMomentShowMessage:
+                        moment_overlay_text_ = rule.message.empty()
+                                                   ? obs_module_text("Settings.DefaultMomentMessage")
+                                                   : rule.message;
+                        moment_overlay_remaining_seconds_ = rule.message_duration_seconds;
+                        refresh_display_text_locked();
+                        should_render = true;
+                        break;
+                    case kMomentPause:
+                        timer_.pause();
+                        should_render = true;
+                        break;
+                    case kMomentAddMinute:
+                        timer_.add_time(std::chrono::minutes{1});
+                        should_render = true;
+                        break;
+                    case kMomentSwitchScene:
+                        if (!rule.scene.empty()) {
+                            scenes_to_switch.push_back(rule.scene);
+                        }
+                        break;
+                    }
+                    if (rule.action == kMomentPause) {
+                        break;
+                    }
+                }
+            }
+
+            if (timer_.state() == Countdown::State::finished && switch_scene_on_end_ && !end_scene_fired_) {
+                end_scene_elapsed_seconds_ += delta_seconds;
+                if (end_scene_elapsed_seconds_ >= static_cast<double>(end_scene_delay_seconds_)) {
+                    end_scene_fired_ = true;
+                    if (!end_scene_name_.empty()) {
+                        scenes_to_switch.push_back(end_scene_name_);
+                    }
+                }
+            }
+
+            if (animation_active_) {
+                animation_elapsed_seconds_ += delta_seconds;
+                const double duration_seconds = static_cast<double>(animation_duration_ms_) / 1000.0;
+                if (animation_elapsed_seconds_ >= duration_seconds) {
+                    animation_active_ = false;
+                    active_animation_preset_ = 0;
+                    active_animation_is_change_ = false;
+                    previous_text_ = current_text_;
+                }
+            }
+
+            if (should_render || was_animating || display_seconds(timer_.remaining()) != last_display_seconds_) {
+                render_pixels_locked();
             }
         }
-
-        if (was_animating || display_seconds(timer_.remaining()) != last_display_seconds_) {
-            render_pixels_locked();
+        for (const std::string &scene : scenes_to_switch) {
+            queue_scene_switch(scene);
         }
     }
 
@@ -257,12 +461,23 @@ private:
     void add_time(Countdown::Duration extra)
     {
         std::lock_guard lock(mutex_);
+        const bool was_finished = timer_.state() == Countdown::State::finished;
         timer_.add_time(extra);
+        if (was_finished) {
+            moment_fired_.fill(false);
+            end_scene_elapsed_seconds_ = 0.0;
+            end_scene_fired_ = false;
+        }
         render_pixels_locked();
     }
 
     void reset_timer_locked(bool start)
     {
+        moment_fired_.fill(false);
+        moment_overlay_text_.clear();
+        moment_overlay_remaining_seconds_ = 0.0;
+        end_scene_elapsed_seconds_ = 0.0;
+        end_scene_fired_ = false;
         timer_.reset(std::chrono::duration_cast<Countdown::Duration>(std::chrono::seconds{duration_seconds_}));
         if (start) {
             timer_.start();
@@ -276,6 +491,9 @@ private:
 
     std::string current_timer_text_locked() const
     {
+        if (moment_overlay_remaining_seconds_ > 0.0 && !moment_overlay_text_.empty()) {
+            return moment_overlay_text_;
+        }
         return timer_.state() == Countdown::State::finished
                    ? end_message_
                    : format_remaining(timer_.remaining(), time_format_);
@@ -423,7 +641,7 @@ private:
         const double center_x = static_cast<double>(kCanvasWidth) / 2.0;
         const double center_y = static_cast<double>(kCanvasHeight) / 2.0;
         auto draw_layer = [&](const QString &text, double opacity, double scale, double offset_x, double offset_y,
-                              bool reveal) {
+                              bool reveal, double rotation_degrees = 0.0) {
             if (text.isEmpty() || opacity <= 0.0) {
                 return;
             }
@@ -438,8 +656,9 @@ private:
                 painter.setClipRect(QRectF(left, 0.0, line_width * progress, static_cast<double>(kCanvasHeight)),
                                     Qt::IntersectClip);
             }
-            if (scale != 1.0 || offset_x != 0.0 || offset_y != 0.0) {
+            if (scale != 1.0 || offset_x != 0.0 || offset_y != 0.0 || rotation_degrees != 0.0) {
                 painter.translate(center_x + offset_x, center_y + offset_y);
+                painter.rotate(rotation_degrees);
                 painter.scale(scale, scale);
                 painter.translate(-center_x, -center_y);
             }
@@ -504,7 +723,7 @@ private:
 
             auto draw_glyph = [&](QChar character, double x, double width, double opacity,
                                   double scale_x, double scale_y, double offset_x, double offset_y,
-                                  double reveal_fraction) {
+                                  double reveal_fraction, double rotation_degrees = 0.0) {
                 if (opacity <= 0.0 || reveal_fraction <= 0.0) {
                     return;
                 }
@@ -519,6 +738,7 @@ private:
                 painter.setClipRect(QRectF(x, 0.0, width * std::clamp(reveal_fraction, 0.0, 1.0),
                                            static_cast<double>(kCanvasHeight)), Qt::IntersectClip);
                 painter.translate(glyph_center_x + offset_x, center_y + offset_y);
+                painter.rotate(rotation_degrees);
                 painter.scale(scale_x, scale_y);
                 painter.translate(-glyph_center_x, -center_y);
                 painter.drawText(QPointF(glyph_x, baseline), glyph);
@@ -613,6 +833,24 @@ private:
                                    -direction * cell_height * (1.0 - digit_progress), 1.0);
                         break;
                     }
+                    case 11: { // Custom transform
+                        const double scale = static_cast<double>(custom_animation_scale_start_percent_) / 100.0
+                                             + (1.0 - static_cast<double>(custom_animation_scale_start_percent_) / 100.0)
+                                                   * digit_progress;
+                        const double offset_x = static_cast<double>(custom_animation_offset_x_)
+                                                * (1.0 - digit_progress);
+                        const double offset_y = static_cast<double>(custom_animation_offset_y_)
+                                                * (1.0 - digit_progress);
+                        const double rotation = static_cast<double>(custom_animation_rotation_)
+                                                * (1.0 - digit_progress);
+                        const double old_opacity = custom_animation_fade_ ? outgoing_opacity : 1.0;
+                        const double new_opacity = custom_animation_fade_ ? incoming_opacity : 1.0;
+                        draw_glyph(previous, cell_x, cell_width, old_opacity, 1.0, 1.0, -offset_x * 0.35,
+                                   -offset_y * 0.35, 1.0, -rotation * 0.35);
+                        draw_glyph(current, cell_x, cell_width, new_opacity, scale, scale,
+                                   offset_x, offset_y, 1.0, rotation);
+                        break;
+                    }
                     default:
                         draw_glyph(previous, cell_x, cell_width, outgoing_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
                         draw_glyph(current, cell_x, cell_width, incoming_opacity, 1.0, 1.0, 0.0, 0.0, 1.0);
@@ -698,6 +936,19 @@ private:
                 draw_layer(display_text, 1.0, 1.0, 0.0,
                            static_cast<double>(kCanvasHeight) * (1.0 - progress), false);
                 break;
+            case 11: {
+                const double scale_from = static_cast<double>(custom_animation_scale_start_percent_) / 100.0;
+                const double scale = scale_from + (1.0 - scale_from) * progress;
+                const double offset_x = static_cast<double>(custom_animation_offset_x_) * (1.0 - progress);
+                const double offset_y = static_cast<double>(custom_animation_offset_y_) * (1.0 - progress);
+                const double rotation = static_cast<double>(custom_animation_rotation_) * (1.0 - progress);
+                const double old_opacity = custom_animation_fade_ ? outgoing_opacity : 1.0;
+                const double new_opacity = custom_animation_fade_ ? incoming_opacity : 1.0;
+                draw_layer(previous_text, old_opacity, 1.0, -offset_x * 0.35, -offset_y * 0.35, false,
+                           -rotation * 0.35);
+                draw_layer(display_text, new_opacity, scale, offset_x, offset_y, false, rotation);
+                break;
+            }
             default:
                 draw_layer(display_text, 1.0, 1.0, 0.0, 0.0, false);
                 break;
@@ -712,6 +963,7 @@ private:
 
     int64_t duration_seconds_;
     bool auto_start_;
+    bool start_on_stream_start_;
     bool show_background_;
     bool antialiasing_;
     uint32_t text_color_;
@@ -719,12 +971,26 @@ private:
     int font_size_percent_;
     int time_format_;
     std::string end_message_;
+    bool switch_scene_on_end_;
+    int end_scene_delay_seconds_;
+    std::string end_scene_name_;
+    double end_scene_elapsed_seconds_{0.0};
+    bool end_scene_fired_{false};
+    std::array<MomentRule, kMomentCount> moments_{};
+    std::array<bool, kMomentCount> moment_fired_{};
+    std::string moment_overlay_text_;
+    double moment_overlay_remaining_seconds_{0.0};
     int start_animation_;
     int change_animation_;
     int animation_duration_ms_;
     int animation_easing_;
     bool animate_digits_only_;
     int animation_stagger_ms_;
+    int custom_animation_scale_start_percent_;
+    int custom_animation_offset_x_;
+    int custom_animation_offset_y_;
+    int custom_animation_rotation_;
+    bool custom_animation_fade_;
     int active_animation_preset_{0};
     bool animation_active_{false};
     bool active_animation_is_change_{false};
@@ -806,12 +1072,31 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "font_size_percent", 100);
     obs_data_set_default_int(settings, "time_format", 0);
     obs_data_set_default_string(settings, "end_message", obs_module_text("Settings.DefaultEndMessage"));
+    obs_data_set_default_bool(settings, "start_on_stream_start", false);
+    obs_data_set_default_bool(settings, "reset_on_stream_start", false);
+    obs_data_set_default_bool(settings, "switch_scene_on_end", false);
+    obs_data_set_default_int(settings, "end_scene_delay_seconds", 0);
+    obs_data_set_default_string(settings, "end_scene_name", "");
+    for (int index = 0; index < kMomentCount; ++index) {
+        const std::string prefix = "moment_" + std::to_string(index + 1);
+        obs_data_set_default_bool(settings, (prefix + "_enabled").c_str(), false);
+        obs_data_set_default_int(settings, (prefix + "_seconds").c_str(), index == 0 ? 60 : (index == 1 ? 10 : 5));
+        obs_data_set_default_int(settings, (prefix + "_action").c_str(), kMomentShowMessage);
+        obs_data_set_default_string(settings, (prefix + "_message").c_str(), obs_module_text("Settings.DefaultMomentMessage"));
+        obs_data_set_default_int(settings, (prefix + "_message_duration_seconds").c_str(), 3);
+        obs_data_set_default_string(settings, (prefix + "_scene").c_str(), "");
+    }
     obs_data_set_default_int(settings, "start_animation", 1);
     obs_data_set_default_int(settings, "change_animation", 1);
     obs_data_set_default_int(settings, "animation_duration_ms", 350);
     obs_data_set_default_int(settings, "animation_easing", 1);
     obs_data_set_default_bool(settings, "animate_digits_only", true);
     obs_data_set_default_int(settings, "animation_stagger_ms", 40);
+    obs_data_set_default_int(settings, "animation_custom_scale_start_percent", 85);
+    obs_data_set_default_int(settings, "animation_custom_offset_x", 0);
+    obs_data_set_default_int(settings, "animation_custom_offset_y", 80);
+    obs_data_set_default_int(settings, "animation_custom_rotation", 0);
+    obs_data_set_default_bool(settings, "animation_custom_fade", true);
 }
 
 bool start_clicked(obs_properties_t *, obs_property_t *, void *data)
@@ -847,23 +1132,75 @@ bool add_five_minutes_clicked(obs_properties_t *, obs_property_t *, void *data)
 obs_properties_t *source_properties(void *data)
 {
     auto *properties = obs_properties_create();
-    obs_properties_add_int(properties, "duration_seconds", obs_module_text("Settings.Duration"), 1,
+
+    auto *general = obs_properties_create();
+    obs_properties_add_int(general, "duration_seconds", obs_module_text("Settings.Duration"), 1,
                            static_cast<int>(kMaximumDurationSeconds), 1);
-    obs_properties_add_bool(properties, "auto_start", obs_module_text("Settings.AutoStart"));
-    obs_properties_add_bool(properties, "show_background", obs_module_text("Settings.ShowBackground"));
-    obs_properties_add_bool(properties, "antialiasing", obs_module_text("Settings.Antialiasing"));
-    obs_properties_add_color_alpha(properties, "text_color", obs_module_text("Settings.TextColor"));
-    obs_properties_add_color_alpha(properties, "background_color", obs_module_text("Settings.BackgroundColor"));
-    obs_properties_add_font(properties, "font", obs_module_text("Settings.Font"));
-    obs_properties_add_path(properties, "custom_font_file", obs_module_text("Settings.CustomFontFile"),
-                            OBS_PATH_FILE, "Font files (*.ttf *.otf *.ttc)", nullptr);
-    obs_properties_add_int_slider(properties, "font_size_percent", obs_module_text("Settings.FontSize"), 25, 100, 1);
-    auto *format = obs_properties_add_list(properties, "time_format", obs_module_text("Settings.TimeFormat"),
+    obs_properties_add_bool(general, "auto_start", obs_module_text("Settings.AutoStart"));
+    obs_properties_add_group(properties, "general_group", obs_module_text("Settings.GeneralGroup"),
+                             OBS_GROUP_NORMAL, general);
+
+    auto *start_settings = obs_properties_create();
+    obs_properties_add_bool(start_settings, "start_on_stream_start", obs_module_text("Settings.StartOnStreamStart"));
+    obs_properties_add_bool(start_settings, "reset_on_stream_start", obs_module_text("Settings.ResetOnStreamStart"));
+    obs_properties_add_group(properties, "start_settings_group", obs_module_text("Settings.StartSettingsGroup"),
+                             OBS_GROUP_NORMAL, start_settings);
+
+    auto *end_settings = obs_properties_create();
+    obs_properties_add_text(end_settings, "end_message", obs_module_text("Settings.EndMessage"), OBS_TEXT_DEFAULT);
+    obs_properties_add_bool(end_settings, "switch_scene_on_end", obs_module_text("Settings.SwitchSceneOnEnd"));
+    obs_properties_add_int(end_settings, "end_scene_delay_seconds", obs_module_text("Settings.EndSceneDelay"), 0, 3600, 1);
+    add_scene_list(end_settings, "end_scene_name", obs_module_text("Settings.EndScene"));
+    obs_properties_add_group(properties, "end_settings_group", obs_module_text("Settings.EndSettingsGroup"),
+                             OBS_GROUP_NORMAL, end_settings);
+
+    auto *display_format = obs_properties_create();
+    auto *format = obs_properties_add_list(display_format, "time_format", obs_module_text("Settings.TimeFormat"),
                                            OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
     obs_property_list_add_int(format, obs_module_text("Format.Automatic"), 0);
     obs_property_list_add_int(format, "MM:SS", 1);
     obs_property_list_add_int(format, "HH:MM:SS", 2);
-    obs_properties_add_text(properties, "end_message", obs_module_text("Settings.EndMessage"), OBS_TEXT_DEFAULT);
+    obs_properties_add_group(properties, "display_format_group", obs_module_text("Settings.DisplayFormatGroup"),
+                             OBS_GROUP_NORMAL, display_format);
+
+    auto *appearance = obs_properties_create();
+    obs_properties_add_bool(appearance, "show_background", obs_module_text("Settings.ShowBackground"));
+    obs_properties_add_bool(appearance, "antialiasing", obs_module_text("Settings.Antialiasing"));
+    obs_properties_add_color_alpha(appearance, "text_color", obs_module_text("Settings.TextColor"));
+    obs_properties_add_color_alpha(appearance, "background_color", obs_module_text("Settings.BackgroundColor"));
+    obs_properties_add_font(appearance, "font", obs_module_text("Settings.Font"));
+    obs_properties_add_path(appearance, "custom_font_file", obs_module_text("Settings.CustomFontFile"),
+                            OBS_PATH_FILE, "Font files (*.ttf *.otf *.ttc)", nullptr);
+    obs_properties_add_int_slider(appearance, "font_size_percent", obs_module_text("Settings.FontSize"), 25, 100, 1);
+    obs_properties_add_group(properties, "appearance_group", obs_module_text("Settings.AppearanceGroup"),
+                             OBS_GROUP_NORMAL, appearance);
+
+    auto *moments = obs_properties_create();
+    for (int index = 0; index < kMomentCount; ++index) {
+        const std::string prefix = "moment_" + std::to_string(index + 1);
+        auto *moment = obs_properties_create();
+        obs_properties_add_bool(moment, (prefix + "_enabled").c_str(), obs_module_text("Settings.MomentEnabled"));
+        obs_properties_add_int(moment, (prefix + "_seconds").c_str(), obs_module_text("Settings.MomentAtSeconds"),
+                               1, static_cast<int>(kMaximumDurationSeconds), 1);
+        auto *action = obs_properties_add_list(moment, (prefix + "_action").c_str(),
+                                               obs_module_text("Settings.MomentAction"),
+                                               OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+        obs_property_list_add_int(action, obs_module_text("Moment.ActionMessage"), kMomentShowMessage);
+        obs_property_list_add_int(action, obs_module_text("Moment.ActionPause"), kMomentPause);
+        obs_property_list_add_int(action, obs_module_text("Moment.ActionAddMinute"), kMomentAddMinute);
+        obs_property_list_add_int(action, obs_module_text("Moment.ActionScene"), kMomentSwitchScene);
+        obs_properties_add_text(moment, (prefix + "_message").c_str(), obs_module_text("Settings.MomentMessage"),
+                                OBS_TEXT_DEFAULT);
+        obs_properties_add_int(moment, (prefix + "_message_duration_seconds").c_str(),
+                               obs_module_text("Settings.MomentMessageDuration"), 1, 30, 1);
+        add_scene_list(moment, (prefix + "_scene").c_str(), obs_module_text("Settings.MomentScene"));
+        const std::string group_name = prefix + "_group";
+        const std::string group_label = std::string(obs_module_text("Settings.MomentGroup")) + " "
+                                        + std::to_string(index + 1);
+        obs_properties_add_group(moments, group_name.c_str(), group_label.c_str(), OBS_GROUP_NORMAL, moment);
+    }
+    obs_properties_add_group(properties, "moments_group", obs_module_text("Settings.KeyMomentsGroup"),
+                             OBS_GROUP_NORMAL, moments);
 
     auto *animation = obs_properties_create();
     auto *start_animation = obs_properties_add_list(animation, "start_animation",
@@ -875,8 +1212,8 @@ obs_properties_t *source_properties(void *data)
     const char *animation_names[] = {
         "Animation.None", "Animation.Fade", "Animation.SlideUp", "Animation.SlideLeft",
         "Animation.Zoom", "Animation.Bounce", "Animation.Pulse", "Animation.Reveal", "Animation.Shake",
-        "Animation.Flip", "Animation.Roll"};
-    for (int preset = 0; preset < 11; ++preset) {
+        "Animation.Flip", "Animation.Roll", "Animation.Custom"};
+    for (int preset = 0; preset <= 11; ++preset) {
         const char *label = obs_module_text(animation_names[preset]);
         obs_property_list_add_int(start_animation, label, preset);
         obs_property_list_add_int(change_animation, label, preset);
@@ -891,6 +1228,19 @@ obs_properties_t *source_properties(void *data)
     obs_property_list_add_int(easing, obs_module_text("Animation.EasingLinear"), 0);
     obs_property_list_add_int(easing, obs_module_text("Animation.EasingOut"), 1);
     obs_property_list_add_int(easing, obs_module_text("Animation.EasingInOut"), 2);
+
+    auto *custom_animation = obs_properties_create();
+    obs_properties_add_int_slider(custom_animation, "animation_custom_scale_start_percent",
+                                  obs_module_text("Settings.CustomAnimationScale"), 25, 200, 1);
+    obs_properties_add_int_slider(custom_animation, "animation_custom_offset_x",
+                                  obs_module_text("Settings.CustomAnimationOffsetX"), -300, 300, 1);
+    obs_properties_add_int_slider(custom_animation, "animation_custom_offset_y",
+                                  obs_module_text("Settings.CustomAnimationOffsetY"), -300, 300, 1);
+    obs_properties_add_int_slider(custom_animation, "animation_custom_rotation",
+                                  obs_module_text("Settings.CustomAnimationRotation"), -180, 180, 1);
+    obs_properties_add_bool(custom_animation, "animation_custom_fade", obs_module_text("Settings.CustomAnimationFade"));
+    obs_properties_add_group(animation, "custom_animation_group", obs_module_text("Settings.CustomAnimationGroup"),
+                             OBS_GROUP_NORMAL, custom_animation);
     obs_properties_add_group(properties, "animation_group", obs_module_text("Settings.AnimationGroup"),
                              OBS_GROUP_NORMAL, animation);
 
@@ -916,6 +1266,29 @@ obs_properties_t *source_properties(void *data)
 }
 
 } // namespace
+
+void start_countdown_on_stream(obs_source_t *source)
+{
+    if (source == nullptr || std::strcmp(obs_source_get_id(source), "countdown_studio_timer") != 0) {
+        return;
+    }
+    obs_data_t *settings = obs_source_get_settings(source);
+    const bool start_on_live = obs_data_get_bool(settings, "start_on_stream_start");
+    const bool reset_on_live = obs_data_get_bool(settings, "reset_on_stream_start");
+    obs_data_release(settings);
+    if (!start_on_live) {
+        return;
+    }
+
+    obs_properties_t *properties = obs_source_properties(source);
+    if (properties != nullptr) {
+        obs_property_t *button = obs_properties_get(properties, reset_on_live ? "restart" : "start");
+        if (button != nullptr) {
+            obs_property_button_clicked(button, nullptr);
+        }
+        obs_properties_destroy(properties);
+    }
+}
 
 void register_countdown_source()
 {
