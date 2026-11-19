@@ -12,6 +12,15 @@ A native countdown timer for OBS Studio. Set it up and control it directly insid
 
 The repository is private, so you need access to download the installer.
 
+### Install on Linux
+
+1. Download the **modern** ZIP for OBS 33 or newer, or the **legacy** ZIP for OBS 32, from [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
+2. Extract the ZIP and close OBS.
+3. Right-click **install-linux.sh** and choose **Run as a Program**. It installs the plugin for your user; no administrator password is needed. If that option is unavailable, open a terminal in the extracted folder and run `bash install-linux.sh`.
+4. Reopen OBS.
+
+Linux plugin loading has been confirmed on Ubuntu 26.04 with OBS 33. OBS 32 Linux and Flatpak/Snap installations have not been checked.
+
 ### Use the timer
 
 1. In OBS, add **Countdown Studio Timer** from **Sources → +**.
@@ -28,7 +37,7 @@ Under **Animation**, choose effects for the timer start and text changes. By def
 
 ### Compatibility
 
-Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are compiled against matching OBS SDKs (OBS 32.2.2 on Ubuntu 24.04 and OBS 33.0.1 on Ubuntu 26.04). Download Linux packages from the **Assets** section of a GitHub Release. The **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) also has temporary build packages. Linux packages target native Ubuntu OBS installations; Flatpak/Snap support and runtime loading still need testing. macOS packages are not currently available.
+Windows x64 installers are available for OBS 32 and OBS 33 or newer. Linux x64 ZIP packages are compiled against matching OBS SDKs (OBS 32.2.2 on Ubuntu 24.04 and OBS 33.0.1 on Ubuntu 26.04). Download Linux packages from the **Assets** section of a GitHub Release. The **Artifacts** section of a successful [GitHub Actions run](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) also has temporary build packages. Linux ZIPs include a user-level installer for native Ubuntu OBS. Runtime loading was confirmed on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap installations have not been checked. macOS packages are not currently available.
 
 ### Build from source
 
@@ -48,6 +57,15 @@ Un minuteur natif pour OBS Studio, à configurer et à contrôler directement da
 
 Le dépôt est privé : vous devez y avoir accès pour télécharger l’installateur.
 
+### Installer sous Linux
+
+1. Téléchargez le ZIP **modern** pour OBS 33 ou une version ultérieure, ou le ZIP **legacy** pour OBS 32, depuis les [GitHub Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
+2. Extrayez le ZIP et fermez OBS.
+3. Faites un clic droit sur **install-linux.sh**, puis choisissez **Lancer comme un programme**. Le script installe le plugin dans votre dossier utilisateur, sans mot de passe administrateur. Si cette option n’apparaît pas, ouvrez un terminal dans le dossier extrait et lancez `bash install-linux.sh`.
+4. Rouvrez OBS.
+
+Le chargement du plugin a été confirmé sous Ubuntu 26.04 avec OBS 33. Le paquet Linux OBS 32 et les installations Flatpak/Snap n’ont pas encore été vérifiés.
+
 ### Utiliser le minuteur
 
 1. Dans OBS, ajoutez **Minuteur Countdown Studio** avec **Sources → +**.
@@ -64,7 +82,7 @@ Dans **Animation**, choisissez les effets au démarrage et lors des changements 
 
 ### Compatibilité
 
-Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés avec les SDK OBS correspondants (OBS 32.2.2 sous Ubuntu 24.04 et OBS 33.0.1 sous Ubuntu 26.04). Téléchargez les paquets Linux dans la section **Assets** d’une release GitHub. La section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) contient aussi les paquets temporaires de compilation. Les paquets Linux ciblent OBS installé nativement sous Ubuntu; leur compatibilité Flatpak/Snap et leur chargement restent à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
+Des installateurs Windows x64 sont disponibles pour OBS 32 et OBS 33 ou plus récent. Des ZIP Linux x64 sont compilés avec les SDK OBS correspondants (OBS 32.2.2 sous Ubuntu 24.04 et OBS 33.0.1 sous Ubuntu 26.04). Téléchargez les paquets Linux dans la section **Assets** d’une release GitHub. La section **Artifacts** d’une [exécution réussie de GitHub Actions](https://github.com/Dacfield2/CountdownStudio/actions/workflows/windows-release.yml) contient aussi les paquets temporaires de compilation. Les ZIP Linux incluent un installateur pour OBS natif sous Ubuntu. Le chargement a été confirmé sous Ubuntu 26.04 avec OBS 33; le paquet Linux OBS 32 et les installations Flatpak/Snap restent à vérifier. Les paquets macOS ne sont pas disponibles pour le moment.
 
 ### Compiler le projet
 

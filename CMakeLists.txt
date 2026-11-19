@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(CountdownStudio VERSION 0.1.1 LANGUAGES CXX)
+project(CountdownStudio VERSION 0.1.3 LANGUAGES CXX)
 
 include(CTest)
 
@@ -68,6 +68,10 @@ if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
     else()
         install(TARGETS countdownstudio RUNTIME DESTINATION "." LIBRARY DESTINATION ".")
         install(DIRECTORY data/ DESTINATION "data")
+    endif()
+
+    if(UNIX AND NOT APPLE)
+        install(PROGRAMS scripts/install-linux.sh DESTINATION ".")
     endif()
 
     if(APPLE)
