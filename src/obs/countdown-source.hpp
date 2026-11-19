@@ -1,5 +1,6 @@
 #pragma once
 
+#include <obs.h>
 #include <obs-source.h>
 
 namespace countdownstudio {
