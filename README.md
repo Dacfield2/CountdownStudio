@@ -21,7 +21,7 @@ A native OBS countdown timer with its controls and settings inside OBS.
 
 ### Appearance and animation
 
-Set the countdown font, size, colors, background, time format, and end message in the source properties. The clock has separate controls for its font, optional custom font file, size, and text color. Its optional frame can use a rectangle, rounded rectangle, pill, or ellipse, with configurable fill and border colors, corner radius, padding, and border width. The in-properties preview updates as you change these settings. Enable anti-aliasing for smoother text edges.
+Set the countdown font, size, colors, background, time format, and end message in the source properties. The clock has separate controls for its font, optional custom font file, size, and text color. Its optional frame can use a rectangle, rounded rectangle, pill, or ellipse, with configurable fill and border colors, corner radius, padding, and border width. The in-properties preview shows the source as soon as you open its properties and updates as you change these settings. Enable anti-aliasing for smoother text edges.
 
 Choose separate animations for starting and changing text. The **Custom** animation lets you combine a starting scale, horizontal and vertical movement, rotation, fade, easing, duration, and digit stagger. Animate only changed digits or the whole timer.
 
@@ -54,7 +54,7 @@ Un minuteur natif pour OBS, avec ses commandes et ses réglages directement dans
 
 ### Apparence et animation
 
-Réglez séparément la police, la taille et la couleur du compte à rebours et de l’horloge. L’horloge peut utiliser une police système ou un fichier personnalisé `.ttf`, `.otf` ou `.ttc`. Vous pouvez activer un cadre et choisir son remplissage, son contour, sa forme (rectangle, rectangle arrondi, capsule ou ellipse), l’arrondi des coins et la marge autour de l’heure. L’aperçu des propriétés se met à jour quand vous modifiez ces réglages. Activez l’anticrénelage pour lisser les contours.
+Réglez séparément la police, la taille et la couleur du compte à rebours et de l’horloge. L’horloge peut utiliser une police système ou un fichier personnalisé `.ttf`, `.otf` ou `.ttc`. Vous pouvez activer un cadre et choisir son remplissage, son contour, sa forme (rectangle, rectangle arrondi, capsule ou ellipse), l’arrondi des coins et la marge autour de l’heure. L’aperçu des propriétés montre la source dès l’ouverture et se met à jour quand vous modifiez ces réglages. Activez l’anticrénelage pour lisser les contours.
 
 Choisissez une animation pour le démarrage et une autre pour les changements de texte. L’animation **Personnalisée** combine taille de départ, déplacement horizontal et vertical, rotation, fondu, accélération, durée et décalage des chiffres. Animez seulement les chiffres modifiés ou le minuteur entier.
 
