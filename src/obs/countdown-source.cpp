@@ -858,7 +858,7 @@ private:
 
         const char *face = obs_data_get_string(font, "face");
         const char *style = obs_data_get_string(font, "style");
-        if (face != nullptr && face[0] != ' ') {
+        if (face != nullptr && face[0] != '\0') {
             clock_font_face_ = face;
         }
         if (style != nullptr) {
