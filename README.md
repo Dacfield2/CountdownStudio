@@ -47,6 +47,8 @@ To use the source as a clock, choose **Current local time** under **Display mode
 
 See [Building Countdown Studio](docs/BUILDING.md) for the development requirements and build steps. Contributions and bug reports are welcome through [GitHub Issues](https://github.com/Dacfield2/CountdownStudio/issues) and [Pull Requests](https://github.com/Dacfield2/CountdownStudio/pulls). Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
 
+To publish a release, run **OBS Studio packages** from GitHub Actions with a `vX.Y.Z` tag. If the tag is missing, the workflow creates it on the selected commit; the tag sets the package and plugin version.
+
 ## License
 
 Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE).
@@ -98,6 +100,9 @@ Pour utiliser la source comme horloge, choisissez **Heure locale actuelle** dans
 
 Consultez [Compiler Countdown Studio](docs/BUILDING.md) pour les prérequis et les étapes de compilation. Les contributions et signalements de problèmes sont les bienvenus dans les [Issues GitHub](https://github.com/Dacfield2/CountdownStudio/issues) et les [Pull Requests](https://github.com/Dacfield2/CountdownStudio/pulls). Lisez [CONTRIBUTING.md](CONTRIBUTING.md) avant de proposer une modification.
 
+Pour publier une release, lancez **OBS Studio packages** depuis GitHub Actions avec un tag `vX.Y.Z`. S’il n’existe pas, le workflow le crée sur le commit sélectionné; ce tag définit la version du paquet et celle du plugin.
+
 ### Licence
 
 Countdown Studio est distribué sous licence [GPL-2.0-or-later](LICENSE).
+
