@@ -29,7 +29,7 @@ Choose separate animations for starting and changing text. The **Custom** animat
 
 Windows x64 packages target OBS 32 and OBS 33+. Linux x64 packages are provided for OBS 32 (legacy) and OBS 33+ (modern). Linux loading has been confirmed on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap installations still need validation. macOS packages are not available yet. SHA-256 checksum files remain available in successful GitHub Actions build artifacts, but are not attached to releases.
 
-The **About** footer in the source properties shows the author and the current project version automatically. The displayed version comes from the same CMake version used for packages.
+The source properties include a live preview of the selected display format and appearance. The **About** footer shows **Haribou_** and the package version. Tagged releases derive that version directly from the release tag, so the footer and package filename stay in sync.
 
 See [build instructions](docs/BUILDING.md). Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE). The repository is private, so access is required to download packages.
 
@@ -62,6 +62,6 @@ Choisissez une animation pour le démarrage et une autre pour les changements de
 
 Des paquets Windows x64 sont prévus pour OBS 32 et OBS 33+. Les paquets Linux x64 existent pour OBS 32 (**legacy**) et OBS 33+ (**modern**). Le chargement Linux a été confirmé sous Ubuntu 26.04 avec OBS 33; OBS 32 Linux et Flatpak/Snap restent à vérifier. Le paquet macOS n’est pas encore disponible. Les fichiers SHA-256 restent dans les artefacts de compilation GitHub Actions, mais ne sont pas joints aux releases.
 
-Le pied de page **À propos** des propriétés affiche l’auteur et la version actuelle du projet. La version est générée depuis le même numéro CMake que celui utilisé pour créer les paquets.
+Les propriétés de la source incluent un aperçu actualisé du format et de l’apparence sélectionnés. Le pied de page **À propos** affiche **Haribou_** et la version du paquet. Pour les releases étiquetées, la version vient directement du tag, ce qui garde le pied de page et le nom du paquet synchronisés.
 
 Consultez les [instructions de compilation](docs/BUILDING.md). Countdown Studio est sous licence [GPL-2.0-or-later](LICENSE). Le dépôt est privé : il faut y avoir accès pour télécharger les paquets.
