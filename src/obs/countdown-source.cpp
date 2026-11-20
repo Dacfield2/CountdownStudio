@@ -227,8 +227,13 @@ QString live_preview_markup(obs_data_t *settings)
         "style='background-color:%1'><tr><td align='center' valign='middle'>"
         "<span style=\"font-family:'%2';font-size:%3px;color:%4;font-weight:%5;font-style:%6;\">%7</span>"
         "</td></tr></table></body></html>");
-    return html.arg(background, font_family.toHtmlEscaped(), QString::number(font_size), rgba(text_color), font_weight,
-                    font_style, sample.toHtmlEscaped());
+    return html.arg(background)
+        .arg(font_family.toHtmlEscaped())
+        .arg(QString::number(font_size))
+        .arg(rgba(text_color))
+        .arg(font_weight)
+        .arg(font_style)
+        .arg(sample.toHtmlEscaped());
 }
 
 class CountdownSource final {
