@@ -21,6 +21,7 @@
 #include <QPainter>
 #include <QString>
 #include <QStringList>
+#include <QTime>
 
 #include <algorithm>
 #include <array>
@@ -51,6 +52,8 @@ constexpr int kMomentShowMessage = 0;
 constexpr int kMomentPause = 1;
 constexpr int kMomentAddMinute = 2;
 constexpr int kMomentSwitchScene = 3;
+constexpr int kDisplayModeCountdown = 0;
+constexpr int kDisplayModeClock = 1;
 
 struct MomentRule {
     bool enabled{false};
@@ -171,6 +174,9 @@ class CountdownSource final {
 public:
     explicit CountdownSource(obs_data_t *settings)
         : duration_seconds_(read_duration(settings)),
+          display_mode_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "display_mode"),
+                                                             kDisplayModeCountdown, kDisplayModeClock))),
+          clock_format_(static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "clock_format"), 0, 1))),
           auto_start_(obs_data_get_bool(settings, "auto_start")),
           start_on_stream_start_(obs_data_get_bool(settings, "start_on_stream_start")),
           show_background_(obs_data_get_bool(settings, "show_background")),
@@ -207,12 +213,12 @@ public:
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
         read_font_settings(settings);
-        if (auto_start_ && !start_on_stream_start_) {
+        if (display_mode_ == kDisplayModeCountdown && auto_start_ && !start_on_stream_start_) {
             timer_.start();
         }
         current_text_ = current_timer_text_locked();
         previous_text_ = current_text_;
-        if (auto_start_ && !start_on_stream_start_) {
+        if (display_mode_ == kDisplayModeCountdown && auto_start_ && !start_on_stream_start_) {
             trigger_start_animation_locked();
         }
         render_pixels_locked();
@@ -234,6 +240,11 @@ public:
     {
         std::lock_guard lock(mutex_);
         const auto new_duration = read_duration(settings);
+        const int new_display_mode = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "display_mode"), kDisplayModeCountdown, kDisplayModeClock));
+        const int new_clock_format = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_format"), 0, 1));
+        const bool display_mode_changed = new_display_mode != display_mode_;
         const auto new_auto_start = obs_data_get_bool(settings, "auto_start");
         const auto new_start_on_stream_start = obs_data_get_bool(settings, "start_on_stream_start");
         show_background_ = obs_data_get_bool(settings, "show_background");
@@ -242,6 +253,8 @@ public:
         background_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "background_color"));
         font_size_percent_ = static_cast<int>(
             std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
+        display_mode_ = new_display_mode;
+        clock_format_ = new_clock_format;
         time_format_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
         end_message_ = read_end_message(settings);
         const bool new_switch_scene_on_end = obs_data_get_bool(settings, "switch_scene_on_end");
@@ -312,11 +325,11 @@ public:
         read_font_settings(settings);
 
         if (new_duration != duration_seconds_ || new_auto_start != auto_start_
-            || new_start_on_stream_start != start_on_stream_start_) {
+            || new_start_on_stream_start != start_on_stream_start_ || display_mode_changed) {
             duration_seconds_ = new_duration;
             auto_start_ = new_auto_start;
             start_on_stream_start_ = new_start_on_stream_start;
-            reset_timer_locked(auto_start_ && !start_on_stream_start_);
+            reset_timer_locked(display_mode_ == kDisplayModeCountdown && auto_start_ && !start_on_stream_start_);
         } else {
             render_pixels_locked();
         }
@@ -339,7 +352,12 @@ public:
                 }
             }
 
-            if (timer_.state() == Countdown::State::running) {
+            if (display_mode_ == kDisplayModeClock) {
+                refresh_display_text_locked();
+                should_render = should_render || current_text_ != last_rendered_text_;
+            }
+
+            if (display_mode_ == kDisplayModeCountdown && timer_.state() == Countdown::State::running) {
                 const int64_t remaining_seconds = display_seconds(timer_.remaining());
                 for (int index = 0; index < kMomentCount; ++index) {
                     const MomentRule &rule = moments_[index];
@@ -376,7 +394,8 @@ public:
                 }
             }
 
-            if (timer_.state() == Countdown::State::finished && switch_scene_on_end_ && !end_scene_fired_) {
+            if (display_mode_ == kDisplayModeCountdown && timer_.state() == Countdown::State::finished
+                && switch_scene_on_end_ && !end_scene_fired_) {
                 end_scene_elapsed_seconds_ += delta_seconds;
                 if (end_scene_elapsed_seconds_ >= static_cast<double>(end_scene_delay_seconds_)) {
                     end_scene_fired_ = true;
@@ -397,7 +416,10 @@ public:
                 }
             }
 
-            if (should_render || was_animating || display_seconds(timer_.remaining()) != last_display_seconds_) {
+            const bool text_changed = display_mode_ == kDisplayModeClock
+                                          ? current_text_ != last_rendered_text_
+                                          : display_seconds(timer_.remaining()) != last_display_seconds_;
+            if (should_render || was_animating || text_changed) {
                 render_pixels_locked();
             }
         }
@@ -428,6 +450,9 @@ public:
     void start()
     {
         std::lock_guard lock(mutex_);
+        if (display_mode_ == kDisplayModeClock) {
+            return;
+        }
         timer_.start();
         refresh_display_text_locked();
         trigger_start_animation_locked();
@@ -437,6 +462,9 @@ public:
     void pause()
     {
         std::lock_guard lock(mutex_);
+        if (display_mode_ == kDisplayModeClock) {
+            return;
+        }
         timer_.pause();
         render_pixels_locked();
     }
@@ -454,13 +482,25 @@ public:
     void restart()
     {
         std::lock_guard lock(mutex_);
+        if (display_mode_ == kDisplayModeClock) {
+            return;
+        }
         reset_timer_locked(true);
+    }
+
+    int display_mode()
+    {
+        std::lock_guard lock(mutex_);
+        return display_mode_;
     }
 
 private:
     void add_time(Countdown::Duration extra)
     {
         std::lock_guard lock(mutex_);
+        if (display_mode_ == kDisplayModeClock) {
+            return;
+        }
         const bool was_finished = timer_.state() == Countdown::State::finished;
         timer_.add_time(extra);
         if (was_finished) {
@@ -491,6 +531,10 @@ private:
 
     std::string current_timer_text_locked() const
     {
+        if (display_mode_ == kDisplayModeClock) {
+            const QString format = clock_format_ == 0 ? QStringLiteral("HH:mm") : QStringLiteral("HH:mm:ss");
+            return QTime::currentTime().toString(format).toUtf8().toStdString();
+        }
         if (moment_overlay_remaining_seconds_ > 0.0 && !moment_overlay_text_.empty()) {
             return moment_overlay_text_;
         }
@@ -958,10 +1002,13 @@ private:
         painter.end();
 
         last_display_seconds_ = display_seconds(timer_.remaining());
+        last_rendered_text_ = current_text_;
         texture_dirty_ = true;
     }
 
     int64_t duration_seconds_;
+    int display_mode_;
+    int clock_format_;
     bool auto_start_;
     bool start_on_stream_start_;
     bool show_background_;
@@ -1007,6 +1054,7 @@ private:
     Countdown timer_;
     std::vector<uint8_t> pixels_;
     int64_t last_display_seconds_{std::numeric_limits<int64_t>::min()};
+    std::string last_rendered_text_;
     gs_texture_t *texture_{nullptr};
     bool texture_dirty_{true};
     std::mutex mutex_;
@@ -1064,6 +1112,8 @@ void source_defaults(obs_data_t *settings)
 
     obs_data_set_default_string(settings, "custom_font_file", "");
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
+    obs_data_set_default_int(settings, "display_mode", kDisplayModeCountdown);
+    obs_data_set_default_int(settings, "clock_format", 0);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
     obs_data_set_default_bool(settings, "antialiasing", true);
@@ -1129,9 +1179,47 @@ bool add_five_minutes_clicked(obs_properties_t *, obs_property_t *, void *data)
     return false;
 }
 
+void set_display_mode_visibility(obs_properties_t *properties, int display_mode)
+{
+    const bool show_countdown = display_mode == kDisplayModeCountdown;
+    const char *countdown_groups[] = {
+        "general_group", "start_settings_group", "end_settings_group", "display_format_group", "moments_group"};
+    for (const char *name : countdown_groups) {
+        obs_property_t *property = obs_properties_get(properties, name);
+        if (property != nullptr) {
+            obs_property_set_visible(property, show_countdown);
+        }
+    }
+    obs_property_t *clock_group = obs_properties_get(properties, "clock_format_group");
+    if (clock_group != nullptr) {
+        obs_property_set_visible(clock_group, !show_countdown);
+    }
+    const char *control_names[] = {"start", "pause", "restart", "add_minute", "add_five_minutes"};
+    for (const char *name : control_names) {
+        obs_property_t *property = obs_properties_get(properties, name);
+        if (property != nullptr) {
+            obs_property_set_visible(property, show_countdown);
+        }
+    }
+}
+
+bool display_mode_modified(obs_properties_t *properties, obs_property_t *, obs_data_t *settings)
+{
+    const int mode = static_cast<int>(std::clamp<int64_t>(
+        obs_data_get_int(settings, "display_mode"), kDisplayModeCountdown, kDisplayModeClock));
+    set_display_mode_visibility(properties, mode);
+    return true;
+}
+
 obs_properties_t *source_properties(void *data)
 {
     auto *properties = obs_properties_create();
+
+    auto *mode = obs_properties_add_list(properties, "display_mode", obs_module_text("Settings.DisplayMode"),
+                                         OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_list_add_int(mode, obs_module_text("DisplayMode.Countdown"), kDisplayModeCountdown);
+    obs_property_list_add_int(mode, obs_module_text("DisplayMode.Clock"), kDisplayModeClock);
+    obs_property_set_modified_callback(mode, display_mode_modified);
 
     auto *general = obs_properties_create();
     obs_properties_add_int(general, "duration_seconds", obs_module_text("Settings.Duration"), 1,
@@ -1162,6 +1250,15 @@ obs_properties_t *source_properties(void *data)
     obs_property_list_add_int(format, "HH:MM:SS", 2);
     obs_properties_add_group(properties, "display_format_group", obs_module_text("Settings.DisplayFormatGroup"),
                              OBS_GROUP_NORMAL, display_format);
+
+    auto *clock_settings = obs_properties_create();
+    auto *clock_format = obs_properties_add_list(clock_settings, "clock_format",
+                                                  obs_module_text("Settings.ClockFormat"),
+                                                  OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_list_add_int(clock_format, obs_module_text("Clock.Format.HoursMinutes"), 0);
+    obs_property_list_add_int(clock_format, obs_module_text("Clock.Format.HoursMinutesSeconds"), 1);
+    obs_properties_add_group(properties, "clock_format_group", obs_module_text("Settings.ClockSettingsGroup"),
+                             OBS_GROUP_NORMAL, clock_settings);
 
     auto *appearance = obs_properties_create();
     obs_properties_add_bool(appearance, "show_background", obs_module_text("Settings.ShowBackground"));
@@ -1244,6 +1341,14 @@ obs_properties_t *source_properties(void *data)
     obs_properties_add_group(properties, "animation_group", obs_module_text("Settings.AnimationGroup"),
                              OBS_GROUP_NORMAL, animation);
 
+    auto *about_author = obs_properties_add_text(
+        properties, "about_author", (std::string(obs_module_text("About.By")) + " Haribou_").c_str(), OBS_TEXT_INFO);
+    obs_property_text_set_info_word_wrap(about_author, true);
+    auto *about_version = obs_properties_add_text(
+        properties, "about_version",
+        (std::string(obs_module_text("About.Version")) + " " COUNTDOWNSTUDIO_VERSION).c_str(), OBS_TEXT_INFO);
+    obs_property_text_set_info_word_wrap(about_version, true);
+
     if (data != nullptr) {
         auto *start = obs_properties_add_button2(properties, "start", obs_module_text("Controls.Start"),
                                                  start_clicked, data);
@@ -1262,6 +1367,9 @@ obs_properties_t *source_properties(void *data)
         obs_property_set_visible(add_minute, false);
         obs_property_set_visible(add_five_minutes, false);
     }
+    set_display_mode_visibility(properties, data != nullptr
+                                                 ? static_cast<CountdownSource *>(data)->display_mode()
+                                                 : kDisplayModeCountdown);
     return properties;
 }
 
@@ -1275,8 +1383,9 @@ void start_countdown_on_stream(obs_source_t *source)
     obs_data_t *settings = obs_source_get_settings(source);
     const bool start_on_live = obs_data_get_bool(settings, "start_on_stream_start");
     const bool reset_on_live = obs_data_get_bool(settings, "reset_on_stream_start");
+    const int display_mode = static_cast<int>(obs_data_get_int(settings, "display_mode"));
     obs_data_release(settings);
-    if (!start_on_live) {
+    if (!start_on_live || display_mode != kDisplayModeCountdown) {
         return;
     }
 
