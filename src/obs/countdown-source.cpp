@@ -170,6 +170,67 @@ int64_t display_seconds(Countdown::Duration remaining)
     return std::chrono::ceil<std::chrono::seconds>(remaining).count();
 }
 
+QString live_preview_markup(obs_data_t *settings)
+{
+    const int display_mode = static_cast<int>(std::clamp<int64_t>(
+        obs_data_get_int(settings, "display_mode"), kDisplayModeCountdown, kDisplayModeClock));
+    QString sample;
+    if (display_mode == kDisplayModeClock) {
+        const int clock_format = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "clock_format"), 0, 1));
+        sample = QTime::currentTime().toString(clock_format == 0 ? QStringLiteral("HH:mm")
+                                                                 : QStringLiteral("HH:mm:ss"));
+    } else {
+        const int time_format = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "time_format"), 0, 2));
+        const auto duration = std::chrono::seconds{read_duration(settings)};
+        sample = QString::fromUtf8(format_remaining(duration, time_format).c_str());
+    }
+
+    QColor text_color = qcolor_from_obs_rgba(static_cast<uint32_t>(obs_data_get_int(settings, "text_color")));
+    QColor background_color =
+        qcolor_from_obs_rgba(static_cast<uint32_t>(obs_data_get_int(settings, "background_color")));
+    const bool show_background = obs_data_get_bool(settings, "show_background");
+    const int size_percent = static_cast<int>(
+        std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
+
+    QString font_family = QStringLiteral("Arial");
+    QString font_weight = QStringLiteral("400");
+    QString font_style = QStringLiteral("normal");
+    uint32_t font_flags = 0;
+    obs_data_t *font = obs_data_get_obj(settings, "font");
+    if (font != nullptr) {
+        const char *face = obs_data_get_string(font, "face");
+        if (face != nullptr && face[0] != '\0') {
+            font_family = QString::fromUtf8(face);
+        }
+        font_flags = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
+        obs_data_release(font);
+    }
+    if ((font_flags & OBS_FONT_BOLD) != 0) {
+        font_weight = QStringLiteral("700");
+    }
+    if ((font_flags & OBS_FONT_ITALIC) != 0) {
+        font_style = QStringLiteral("italic");
+    }
+    font_family.replace(QLatin1Char('\''), QStringLiteral("&#39;"));
+
+    auto rgba = [](const QColor &color) {
+        return QStringLiteral("rgba(%1,%2,%3,%4)")
+            .arg(color.red())
+            .arg(color.green())
+            .arg(color.blue())
+            .arg(color.alphaF(), 0, 'f', 3);
+    };
+    const QString background = show_background ? rgba(background_color) : QStringLiteral("transparent");
+    const int font_size = 58 * size_percent / 100;
+    QString html = QStringLiteral(
+        "<html><body style='margin:0'><table width='620' height='150' cellspacing='0' cellpadding='0' "
+        "style='background-color:%1'><tr><td align='center' valign='middle'>"
+        "<span style=\"font-family:'%2';font-size:%3px;color:%4;font-weight:%5;font-style:%6;\">%7</span>"
+        "</td></tr></table></body></html>");
+    return html.arg(background, font_family.toHtmlEscaped(), QString::number(font_size), rgba(text_color), font_weight,
+                    font_style, sample.toHtmlEscaped());
+}
+
 class CountdownSource final {
 public:
     explicit CountdownSource(obs_data_t *settings)
@@ -1112,6 +1173,7 @@ void source_defaults(obs_data_t *settings)
 
     obs_data_set_default_string(settings, "custom_font_file", "");
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
+    obs_data_set_default_string(settings, "live_preview", "");
     obs_data_set_default_int(settings, "display_mode", kDisplayModeCountdown);
     obs_data_set_default_int(settings, "clock_format", 0);
     obs_data_set_default_bool(settings, "auto_start", true);
@@ -1196,17 +1258,40 @@ void set_display_mode_visibility(obs_properties_t *properties, int display_mode)
     }
 }
 
+void refresh_live_preview(obs_properties_t *properties, obs_data_t *settings)
+{
+    while (obs_properties_get_parent(properties) != nullptr) {
+        properties = obs_properties_get_parent(properties);
+    }
+    obs_property_t *preview = obs_properties_get(properties, "live_preview");
+    if (preview != nullptr) {
+        const QByteArray markup = live_preview_markup(settings).toUtf8();
+        obs_property_set_description(preview, markup.constData());
+    }
+}
+
 bool display_mode_modified(obs_properties_t *properties, obs_property_t *, obs_data_t *settings)
 {
     const int mode = static_cast<int>(std::clamp<int64_t>(
         obs_data_get_int(settings, "display_mode"), kDisplayModeCountdown, kDisplayModeClock));
     set_display_mode_visibility(properties, mode);
+    refresh_live_preview(properties, settings);
+    return true;
+}
+
+bool live_preview_modified(obs_properties_t *properties, obs_property_t *, obs_data_t *settings)
+{
+    refresh_live_preview(properties, settings);
     return true;
 }
 
 obs_properties_t *source_properties(void *data)
 {
     auto *properties = obs_properties_create();
+
+    auto *preview = obs_properties_add_text(properties, "live_preview", obs_module_text("Settings.LivePreview"),
+                                            OBS_TEXT_INFO);
+    obs_property_text_set_info_word_wrap(preview, true);
 
     auto *mode = obs_properties_add_list(properties, "display_mode", obs_module_text("Settings.DisplayMode"),
                                          OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
@@ -1215,8 +1300,9 @@ obs_properties_t *source_properties(void *data)
     obs_property_set_modified_callback(mode, display_mode_modified);
 
     auto *general = obs_properties_create();
-    obs_properties_add_int(general, "duration_seconds", obs_module_text("Settings.Duration"), 1,
-                           static_cast<int>(kMaximumDurationSeconds), 1);
+    auto *duration = obs_properties_add_int(general, "duration_seconds", obs_module_text("Settings.Duration"), 1,
+                                            static_cast<int>(kMaximumDurationSeconds), 1);
+    obs_property_set_modified_callback(duration, live_preview_modified);
     obs_properties_add_bool(general, "auto_start", obs_module_text("Settings.AutoStart"));
     obs_properties_add_group(properties, "general_group", obs_module_text("Settings.GeneralGroup"),
                              OBS_GROUP_NORMAL, general);
@@ -1238,6 +1324,7 @@ obs_properties_t *source_properties(void *data)
     auto *display_format = obs_properties_create();
     auto *format = obs_properties_add_list(display_format, "time_format", obs_module_text("Settings.TimeFormat"),
                                            OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_set_modified_callback(format, live_preview_modified);
     obs_property_list_add_int(format, obs_module_text("Format.Automatic"), 0);
     obs_property_list_add_int(format, "MM:SS", 1);
     obs_property_list_add_int(format, "HH:MM:SS", 2);
@@ -1248,20 +1335,31 @@ obs_properties_t *source_properties(void *data)
     auto *clock_format = obs_properties_add_list(clock_settings, "clock_format",
                                                   obs_module_text("Settings.ClockFormat"),
                                                   OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_set_modified_callback(clock_format, live_preview_modified);
     obs_property_list_add_int(clock_format, obs_module_text("Clock.Format.HoursMinutes"), 0);
     obs_property_list_add_int(clock_format, obs_module_text("Clock.Format.HoursMinutesSeconds"), 1);
     obs_properties_add_group(properties, "clock_format_group", obs_module_text("Settings.ClockSettingsGroup"),
                              OBS_GROUP_NORMAL, clock_settings);
 
     auto *appearance = obs_properties_create();
-    obs_properties_add_bool(appearance, "show_background", obs_module_text("Settings.ShowBackground"));
+    auto *show_background = obs_properties_add_bool(appearance, "show_background",
+                                                     obs_module_text("Settings.ShowBackground"));
+    obs_property_set_modified_callback(show_background, live_preview_modified);
     obs_properties_add_bool(appearance, "antialiasing", obs_module_text("Settings.Antialiasing"));
-    obs_properties_add_color_alpha(appearance, "text_color", obs_module_text("Settings.TextColor"));
-    obs_properties_add_color_alpha(appearance, "background_color", obs_module_text("Settings.BackgroundColor"));
-    obs_properties_add_font(appearance, "font", obs_module_text("Settings.Font"));
-    obs_properties_add_path(appearance, "custom_font_file", obs_module_text("Settings.CustomFontFile"),
-                            OBS_PATH_FILE, "Font files (*.ttf *.otf *.ttc)", nullptr);
-    obs_properties_add_int_slider(appearance, "font_size_percent", obs_module_text("Settings.FontSize"), 25, 100, 1);
+    auto *text_color = obs_properties_add_color_alpha(appearance, "text_color", obs_module_text("Settings.TextColor"));
+    obs_property_set_modified_callback(text_color, live_preview_modified);
+    auto *background_color = obs_properties_add_color_alpha(
+        appearance, "background_color", obs_module_text("Settings.BackgroundColor"));
+    obs_property_set_modified_callback(background_color, live_preview_modified);
+    auto *font_property = obs_properties_add_font(appearance, "font", obs_module_text("Settings.Font"));
+    obs_property_set_modified_callback(font_property, live_preview_modified);
+    auto *custom_font = obs_properties_add_path(appearance, "custom_font_file",
+                                                obs_module_text("Settings.CustomFontFile"),
+                                                OBS_PATH_FILE, "Font files (*.ttf *.otf *.ttc)", nullptr);
+    obs_property_set_modified_callback(custom_font, live_preview_modified);
+    auto *font_size = obs_properties_add_int_slider(appearance, "font_size_percent",
+                                                   obs_module_text("Settings.FontSize"), 25, 100, 1);
+    obs_property_set_modified_callback(font_size, live_preview_modified);
     obs_properties_add_group(properties, "appearance_group", obs_module_text("Settings.AppearanceGroup"),
                              OBS_GROUP_NORMAL, appearance);
 
