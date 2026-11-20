@@ -48,6 +48,7 @@ if(COUNTDOWNSTUDIO_BUILD_OBS_PLUGIN)
     )
     target_link_libraries(countdownstudio PRIVATE CountdownStudio::Core OBS::libobs OBS::obs-frontend-api Qt6::Core Qt6::Widgets)
     target_compile_features(countdownstudio PRIVATE cxx_std_20)
+    target_compile_definitions(countdownstudio PRIVATE "COUNTDOWNSTUDIO_VERSION=\"${PROJECT_VERSION}\"")
     set_target_properties(countdownstudio PROPERTIES
         CXX_EXTENSIONS OFF
         OUTPUT_NAME "CountdownStudio"
