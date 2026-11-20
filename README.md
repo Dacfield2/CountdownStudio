@@ -1,67 +1,101 @@
 # Countdown Studio
 
-A native OBS countdown timer with its controls and settings inside OBS.
+A native OBS Studio source for countdown timers and a customizable local clock. Configure and control it directly in OBS—no browser source required.
 
-## English
+[Download the latest release](https://github.com/Dacfield2/CountdownStudio/releases/latest) · [Report a problem](https://github.com/Dacfield2/CountdownStudio/issues) · [English](#english) · [Français](#français)
 
-### Install
+## Features
 
-- **Windows:** Download the OBS 32 or OBS 33+ installer from [Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), close OBS, run the installer, and reopen OBS. To update, run it over the existing installation; it no longer calls the older uninstaller.
-- **Linux:** Download the OBS 32 **legacy** ZIP or OBS 33+ **modern** ZIP, extract it, close OBS, and run `install-linux.sh`. Then reopen OBS.
+- Countdown timer with pause, resume, reset, and time-add controls.
+- Optional start when OBS begins streaming.
+- Key-moment actions and an optional scene change when the timer ends.
+- Custom text, system or custom fonts, colors, and animations.
+- Clock mode with independent font and color settings, plus an optional customizable frame.
+- In-properties preview that updates as you change settings.
 
-### Use
+## Download and install
 
-1. In OBS, add **Countdown Studio Timer** from **Sources → +**.
-2. Open **Properties** to set the duration, appearance, end message, and automation.
-3. Select the source to show its buttons beside **Properties** and **Filters**. You can start, pause, reset, or add 1, 5, or a custom number of minutes.
-4. Enable **Start when streaming starts** if the timer should begin with your live. You can choose to reset it first.
-5. Enable up to three **Key moments** to show a message, pause, add one minute, or switch scene when a chosen number of seconds remains.
-6. Optionally choose a scene to switch to after the timer ends, with a delay.
-7. Set **Display mode** to **Current local time** to use the source as a clock. Choose **HH:MM** or **HH:MM:SS**.
+Get the package for your operating system and OBS version from [Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
 
-### Appearance and animation
+### Windows
 
-Set the countdown font, size, colors, background, time format, and end message in the source properties. The clock has separate controls for its font, optional custom font file, size, and text color. Its optional frame can use a rectangle, rounded rectangle, pill, or ellipse, with configurable fill and border colors, corner radius, padding, and border width. The in-properties preview shows the source as soon as you open its properties and updates as you change these settings. Enable anti-aliasing for smoother text edges.
+1. Close OBS.
+2. Download and run the installer matching your OBS version: OBS 32 or OBS 33 and newer.
+3. Reopen OBS.
 
-Choose separate animations for starting and changing text. The **Custom** animation lets you combine a starting scale, horizontal and vertical movement, rotation, fade, easing, duration, and digit stagger. Animate only changed digits or the whole timer.
+### Linux
 
-### Compatibility and build
+1. Download the package matching your OBS version: **legacy** for OBS 32 or **modern** for OBS 33 and newer.
+2. Extract the ZIP file.
+3. Close OBS, open a terminal in the extracted folder, and run `./install-linux.sh`. Do not run it with `sudo`.
+4. Reopen OBS.
 
-Windows x64 packages target OBS 32 and OBS 33+. Linux x64 packages are provided for OBS 32 (legacy) and OBS 33+ (modern). Linux loading has been confirmed on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap installations still need validation. macOS packages are not available yet. SHA-256 checksum files remain available in successful GitHub Actions build artifacts, but are not attached to releases.
+There is no macOS release package yet.
 
-The source properties include a live preview of the selected display format and appearance. The **About** footer shows **Haribou_** and the package version. Tagged releases derive that version directly from the release tag, so the footer and package filename stay in sync.
+## Quick start
 
-See [build instructions](docs/BUILDING.md). Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE). The repository is private, so access is required to download packages.
+1. In OBS, choose **Sources → +** and add **Countdown Studio Timer**.
+2. Open the source **Properties** to set the duration, appearance, and behavior.
+3. Select the source to show its controls beside **Properties** and **Filters**.
+4. Start the timer, or enable **Start when streaming starts** in the source properties.
+
+To use the source as a clock, choose **Current local time** under **Display mode**. Select **HH:MM** or **HH:MM:SS**, then adjust the clock font, size, text color, and optional frame. The frame supports rectangle, rounded rectangle, pill, and ellipse shapes, with configurable fill, border, radius, and padding.
+
+## Build and contribute
+
+See [Building Countdown Studio](docs/BUILDING.md) for the development requirements and build steps. Contributions and bug reports are welcome through [GitHub Issues](https://github.com/Dacfield2/CountdownStudio/issues) and [Pull Requests](https://github.com/Dacfield2/CountdownStudio/pulls). Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
+
+## License
+
+Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE).
 
 ## Français
 
-Un minuteur natif pour OBS, avec ses commandes et ses réglages directement dans OBS.
+Countdown Studio est une source native pour OBS Studio qui propose un compte à rebours et une horloge locale personnalisable. Tout se règle et se commande directement dans OBS, sans source navigateur.
 
-### Installation
+[Télécharger la dernière version](https://github.com/Dacfield2/CountdownStudio/releases/latest) · [Signaler un problème](https://github.com/Dacfield2/CountdownStudio/issues) · [English](#english) · [Français](#français)
 
-- **Windows :** téléchargez l’installateur OBS 32 ou OBS 33+ depuis les [releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), fermez OBS, lancez l’installateur, puis rouvrez OBS. Pour mettre à jour, lancez-le sur l’installation existante; il n’appelle plus l’ancien désinstallateur.
-- **Linux :** téléchargez le ZIP **legacy** pour OBS 32 ou **modern** pour OBS 33+, extrayez-le, fermez OBS, puis lancez `install-linux.sh`. Rouvrez OBS ensuite.
+### Fonctionnalités
 
-### Utilisation
+- Compte à rebours avec commandes de pause, reprise, réinitialisation et ajout de temps.
+- Démarrage facultatif au début du direct OBS.
+- Actions aux moments clés et changement de scène facultatif à la fin du décompte.
+- Texte, polices système ou personnalisées, couleurs et animations réglables.
+- Mode horloge avec police et couleurs indépendantes, ainsi qu’un cadre personnalisable.
+- Aperçu dans les propriétés, actualisé lorsque vous modifiez les réglages.
 
-1. Dans OBS, ajoutez **Minuteur Countdown Studio** avec **Sources → +**.
-2. Ouvrez **Propriétés** pour régler la durée, l’apparence, le message de fin et les automatismes.
-3. Sélectionnez la source pour afficher ses boutons à côté de **Propriétés** et **Filtres**. Vous pouvez démarrer, mettre en pause, réinitialiser ou ajouter 1, 5 ou un nombre personnalisé de minutes.
-4. Cochez **Démarrer au lancement du direct** pour lancer le minuteur avec le live. Vous pouvez aussi le réinitialiser avant le démarrage.
-5. Activez jusqu’à trois **Actions aux moments clés** : afficher un message, mettre en pause, ajouter une minute ou changer de scène lorsque le nombre de secondes choisi reste.
-6. Vous pouvez choisir une scène à afficher après la fin du décompte et régler un délai.
-7. Choisissez **Heure locale actuelle** dans **Mode d’affichage** pour utiliser la source comme horloge, puis sélectionnez le format **HH:MM** ou **HH:MM:SS**.
+### Télécharger et installer
 
-### Apparence et animation
+Téléchargez le paquet correspondant à votre système et à votre version d’OBS depuis les [releases](https://github.com/Dacfield2/CountdownStudio/releases/latest).
 
-Réglez séparément la police, la taille et la couleur du compte à rebours et de l’horloge. L’horloge peut utiliser une police système ou un fichier personnalisé `.ttf`, `.otf` ou `.ttc`. Vous pouvez activer un cadre et choisir son remplissage, son contour, sa forme (rectangle, rectangle arrondi, capsule ou ellipse), l’arrondi des coins et la marge autour de l’heure. L’aperçu des propriétés montre la source dès l’ouverture et se met à jour quand vous modifiez ces réglages. Activez l’anticrénelage pour lisser les contours.
+#### Windows
 
-Choisissez une animation pour le démarrage et une autre pour les changements de texte. L’animation **Personnalisée** combine taille de départ, déplacement horizontal et vertical, rotation, fondu, accélération, durée et décalage des chiffres. Animez seulement les chiffres modifiés ou le minuteur entier.
+1. Fermez OBS.
+2. Téléchargez puis lancez l’installateur correspondant à votre version d’OBS : OBS 32 ou OBS 33 et versions ultérieures.
+3. Rouvrez OBS.
 
-### Compatibilité et compilation
+#### Linux
 
-Des paquets Windows x64 sont prévus pour OBS 32 et OBS 33+. Les paquets Linux x64 existent pour OBS 32 (**legacy**) et OBS 33+ (**modern**). Le chargement Linux a été confirmé sous Ubuntu 26.04 avec OBS 33; OBS 32 Linux et Flatpak/Snap restent à vérifier. Le paquet macOS n’est pas encore disponible. Les fichiers SHA-256 restent dans les artefacts de compilation GitHub Actions, mais ne sont pas joints aux releases.
+1. Téléchargez le paquet correspondant à votre version d’OBS : **legacy** pour OBS 32 ou **modern** pour OBS 33 et versions ultérieures.
+2. Extrayez le fichier ZIP.
+3. Fermez OBS, ouvrez un terminal dans le dossier extrait et lancez `./install-linux.sh`. Ne lancez pas ce script avec `sudo`.
+4. Rouvrez OBS.
 
-Les propriétés de la source incluent un aperçu actualisé du format et de l’apparence sélectionnés. Le pied de page **À propos** affiche **Haribou_** et la version du paquet. Pour les releases étiquetées, la version vient directement du tag, ce qui garde le pied de page et le nom du paquet synchronisés.
+Aucun paquet macOS n’est disponible pour le moment.
 
-Consultez les [instructions de compilation](docs/BUILDING.md). Countdown Studio est sous licence [GPL-2.0-or-later](LICENSE). Le dépôt est privé : il faut y avoir accès pour télécharger les paquets.
+### Premiers pas
+
+1. Dans OBS, choisissez **Sources → +**, puis ajoutez **Minuteur Countdown Studio**.
+2. Ouvrez les **Propriétés** de la source pour régler la durée, l’apparence et le fonctionnement.
+3. Sélectionnez la source pour afficher ses commandes à côté de **Propriétés** et **Filtres**.
+4. Démarrez le minuteur ou cochez **Démarrer au lancement du direct** dans les propriétés.
+
+Pour utiliser la source comme horloge, choisissez **Heure locale actuelle** dans **Mode d’affichage**. Sélectionnez **HH:MM** ou **HH:MM:SS**, puis réglez la police, la taille, la couleur du texte et le cadre facultatif. Le cadre peut être rectangulaire, arrondi, en forme de capsule ou elliptique; sa couleur, son contour, son arrondi et sa marge sont personnalisables.
+
+### Compilation et contribution
+
+Consultez [Compiler Countdown Studio](docs/BUILDING.md) pour les prérequis et les étapes de compilation. Les contributions et signalements de problèmes sont les bienvenus dans les [Issues GitHub](https://github.com/Dacfield2/CountdownStudio/issues) et les [Pull Requests](https://github.com/Dacfield2/CountdownStudio/pulls). Lisez [CONTRIBUTING.md](CONTRIBUTING.md) avant de proposer une modification.
+
+### Licence
+
+Countdown Studio est distribué sous licence [GPL-2.0-or-later](LICENSE).
