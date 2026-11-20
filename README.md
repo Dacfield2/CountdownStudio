@@ -4,6 +4,8 @@ A native OBS Studio source for countdown timers and a customizable local clock. 
 
 [Download the latest release](https://github.com/Dacfield2/CountdownStudio/releases/latest) · [Report a problem](https://github.com/Dacfield2/CountdownStudio/issues) · [English](#english) · [Français](#français)
 
+## English
+
 ## Features
 
 - Countdown timer with pause, resume, reset, and time-add controls.
