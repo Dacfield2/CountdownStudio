@@ -59,6 +59,7 @@ constexpr int kClockFrameRectangle = 0;
 constexpr int kClockFrameRounded = 1;
 constexpr int kClockFramePill = 2;
 constexpr int kClockFrameEllipse = 3;
+constexpr double kPi = 3.14159265358979323846;
 
 struct MomentRule {
     bool enabled{false};
@@ -75,6 +76,61 @@ std::string read_string_setting(obs_data_t *settings, const char *name)
 {
     const char *value = obs_data_get_string(settings, name);
     return value != nullptr ? value : "";
+}
+
+void read_font_properties(obs_data_t *settings, const char *name, std::string &face, std::string &style,
+                          int &size_points, uint32_t &flags)
+{
+    obs_data_t *font = obs_data_get_obj(settings, name);
+    if (font == nullptr) {
+        return;
+    }
+
+    const char *font_face = obs_data_get_string(font, "face");
+    const char *font_style = obs_data_get_string(font, "style");
+    if (font_face != nullptr && font_face[0] != '\0') {
+        face = font_face;
+    }
+    if (font_style != nullptr) {
+        style = font_style;
+    }
+    size_points = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(font, "size"), 1, 1000));
+    flags = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
+    obs_data_release(font);
+}
+
+void update_custom_font_file(const std::string &path, std::string &current_path, std::string &family, int &font_id,
+                             const char *load_error, const char *family_error)
+{
+    if (path == current_path) {
+        return;
+    }
+
+    current_path = path;
+    family.clear();
+    if (font_id >= 0) {
+        QFontDatabase::removeApplicationFont(font_id);
+        font_id = -1;
+    }
+    if (current_path.empty()) {
+        return;
+    }
+
+    const int loaded_font_id = QFontDatabase::addApplicationFont(QString::fromUtf8(current_path.c_str()));
+    if (loaded_font_id < 0) {
+        blog(LOG_WARNING, "[CountdownStudio] %s: %s", load_error, current_path.c_str());
+        return;
+    }
+
+    const QStringList families = QFontDatabase::applicationFontFamilies(loaded_font_id);
+    if (families.isEmpty()) {
+        QFontDatabase::removeApplicationFont(loaded_font_id);
+        blog(LOG_WARNING, "[CountdownStudio] %s: %s", family_error, current_path.c_str());
+        return;
+    }
+
+    font_id = loaded_font_id;
+    family = families.front().toUtf8().toStdString();
 }
 
 std::array<MomentRule, kMomentCount> read_moment_rules(obs_data_t *settings)
@@ -173,6 +229,17 @@ std::string format_remaining(Countdown::Duration remaining, int format)
 int64_t display_seconds(Countdown::Duration remaining)
 {
     return std::chrono::ceil<std::chrono::seconds>(remaining).count();
+}
+
+double ease_animation_progress(double progress, int easing) noexcept
+{
+    if (easing == 1) {
+        return 1.0 - std::pow(1.0 - progress, 3.0);
+    }
+    if (easing == 2) {
+        return progress * progress * (3.0 - 2.0 * progress);
+    }
+    return progress;
 }
 
 QString preview_custom_font_family(obs_data_t *settings, const char *path_key)
@@ -773,59 +840,10 @@ private:
 
     void read_font_settings(obs_data_t *settings)
     {
-        const char *custom_font_file = obs_data_get_string(settings, "custom_font_file");
-        load_custom_font(custom_font_file != nullptr ? custom_font_file : "");
-
-        obs_data_t *font = obs_data_get_obj(settings, "font");
-        if (font == nullptr) {
-            return;
-        }
-
-        const char *face = obs_data_get_string(font, "face");
-        const char *style = obs_data_get_string(font, "style");
-        if (face != nullptr && face[0] != '\0') {
-            font_face_ = face;
-        }
-        if (style != nullptr) {
-            font_style_ = style;
-        }
-        font_size_points_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(font, "size"), 1, 1000));
-        font_flags_ = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
-        obs_data_release(font);
-    }
-
-    void load_custom_font(const std::string &path)
-    {
-        if (path == custom_font_path_) {
-            return;
-        }
-
-        custom_font_path_ = path;
-        custom_font_family_.clear();
-        if (custom_font_id_ >= 0) {
-            QFontDatabase::removeApplicationFont(custom_font_id_);
-            custom_font_id_ = -1;
-        }
-        if (custom_font_path_.empty()) {
-            return;
-        }
-
-        const QString file_path = QString::fromUtf8(custom_font_path_.c_str());
-        const int font_id = QFontDatabase::addApplicationFont(file_path);
-        if (font_id < 0) {
-            blog(LOG_WARNING, "[CountdownStudio] Could not load custom font file: %s", custom_font_path_.c_str());
-            return;
-        }
-
-        const QStringList families = QFontDatabase::applicationFontFamilies(font_id);
-        if (families.isEmpty()) {
-            QFontDatabase::removeApplicationFont(font_id);
-            blog(LOG_WARNING, "[CountdownStudio] No usable font family found in: %s", custom_font_path_.c_str());
-            return;
-        }
-
-        custom_font_id_ = font_id;
-        custom_font_family_ = families.front().toUtf8().toStdString();
+        update_custom_font_file(read_string_setting(settings, "custom_font_file"), custom_font_path_,
+                                custom_font_family_, custom_font_id_, "Could not load custom font file",
+                                "No usable font family found in");
+        read_font_properties(settings, "font", font_face_, font_style_, font_size_points_, font_flags_);
     }
 
     void read_clock_appearance_settings(obs_data_t *settings)
@@ -848,60 +866,12 @@ private:
 
     void read_clock_font_settings(obs_data_t *settings)
     {
-        const char *custom_font_file = obs_data_get_string(settings, "clock_custom_font_file");
-        load_clock_custom_font(custom_font_file != nullptr ? custom_font_file : "");
-
-        obs_data_t *font = obs_data_get_obj(settings, "clock_font");
-        if (font == nullptr) {
-            return;
-        }
-
-        const char *face = obs_data_get_string(font, "face");
-        const char *style = obs_data_get_string(font, "style");
-        if (face != nullptr && face[0] != '\0') {
-            clock_font_face_ = face;
-        }
-        if (style != nullptr) {
-            clock_font_style_ = style;
-        }
-        clock_font_size_points_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(font, "size"), 1, 1000));
-        clock_font_flags_ = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
-        obs_data_release(font);
-    }
-
-    void load_clock_custom_font(const std::string &path)
-    {
-        if (path == clock_custom_font_path_) {
-            return;
-        }
-
-        clock_custom_font_path_ = path;
-        clock_custom_font_family_.clear();
-        if (clock_custom_font_id_ >= 0) {
-            QFontDatabase::removeApplicationFont(clock_custom_font_id_);
-            clock_custom_font_id_ = -1;
-        }
-        if (clock_custom_font_path_.empty()) {
-            return;
-        }
-
-        const int font_id = QFontDatabase::addApplicationFont(QString::fromUtf8(clock_custom_font_path_.c_str()));
-        if (font_id < 0) {
-            blog(LOG_WARNING, "[CountdownStudio] Could not load custom clock font file: %s",
-                 clock_custom_font_path_.c_str());
-            return;
-        }
-
-        const QStringList families = QFontDatabase::applicationFontFamilies(font_id);
-        if (families.isEmpty()) {
-            QFontDatabase::removeApplicationFont(font_id);
-            blog(LOG_WARNING, "[CountdownStudio] No usable custom clock font family found: %s",
-                 clock_custom_font_path_.c_str());
-            return;
-        }
-
-        clock_custom_font_id_ = font_id;
-        clock_custom_font_family_ = families.front().toUtf8().toStdString();
+        update_custom_font_file(read_string_setting(settings, "clock_custom_font_file"), clock_custom_font_path_,
+                                clock_custom_font_family_, clock_custom_font_id_,
+                                "Could not load custom clock font file",
+                                "No usable custom clock font family found");
+        read_font_properties(settings, "clock_font", clock_font_face_, clock_font_style_,
+                             clock_font_size_points_, clock_font_flags_);
     }
 
     void render_pixels_locked()
@@ -958,12 +928,7 @@ private:
                                                          / static_cast<double>(animation_duration_ms_),
                                                      0.0, 1.0)
                                         : 1.0;
-        double progress = raw_progress;
-        if (animation_easing_ == 1) {
-            progress = 1.0 - std::pow(1.0 - raw_progress, 3.0);
-        } else if (animation_easing_ == 2) {
-            progress = raw_progress * raw_progress * (3.0 - 2.0 * raw_progress);
-        }
+        const double progress = animation_active_ ? ease_animation_progress(raw_progress, animation_easing_) : 1.0;
 
         const double center_x = static_cast<double>(kCanvasWidth) / 2.0;
         const double center_y = static_cast<double>(kCanvasHeight) / 2.0;
@@ -1025,16 +990,6 @@ private:
             painter.restore();
         };
 
-        auto ease_progress = [&](double value) {
-            if (animation_easing_ == 1) {
-                return 1.0 - std::pow(1.0 - value, 3.0);
-            }
-            if (animation_easing_ == 2) {
-                return value * value * (3.0 - 2.0 * value);
-            }
-            return value;
-        };
-
         auto draw_digit_transition = [&]() {
             if (!animation_active_ || !active_animation_is_change_ || !animate_digits_only_
                 || timer_.state() == Countdown::State::finished
@@ -1068,7 +1023,6 @@ private:
             const double line_top = (static_cast<double>(kCanvasHeight) - metrics.height()) / 2.0;
             const double baseline = line_top + metrics.ascent();
             const double cell_height = metrics.height();
-            constexpr double kPi = 3.14159265358979323846;
             std::vector<int> changed_digits_from_right;
             for (int index = display_text.size() - 1; index >= 0; --index) {
                 if (previous_text[index] != display_text[index]) {
@@ -1121,7 +1075,7 @@ private:
                                                    : 0.0;
                     const double local_raw = std::clamp(
                         (raw_progress - start_delay) / std::max(0.001, 1.0 - start_delay), 0.0, 1.0);
-                    const double digit_progress = ease_progress(local_raw);
+                    const double digit_progress = ease_animation_progress(local_raw, animation_easing_);
                     const double outgoing_opacity = 1.0 - digit_progress;
                     const double incoming_opacity = digit_progress;
                     switch (active_animation_preset_) {
@@ -1242,7 +1196,6 @@ private:
         } else {
             const double outgoing_opacity = 1.0 - progress;
             const double incoming_opacity = progress;
-            constexpr double kPi = 3.14159265358979323846;
             switch (active_animation_preset_) {
             case 1: // Fade
                 draw_layer(previous_text, outgoing_opacity, 1.0, 0.0, 0.0, false);
@@ -1812,6 +1765,26 @@ obs_properties_t *source_properties(void *data)
 
 } // namespace
 
+void invoke_countdown_control(obs_source_t *source, const char *property_name, int repetitions)
+{
+    if (source == nullptr || property_name == nullptr || repetitions <= 0) {
+        return;
+    }
+
+    obs_properties_t *properties = obs_source_properties(source);
+    if (properties == nullptr) {
+        return;
+    }
+
+    obs_property_t *property = obs_properties_get(properties, property_name);
+    if (property != nullptr) {
+        for (int index = 0; index < repetitions; ++index) {
+            obs_property_button_clicked(property, nullptr);
+        }
+    }
+    obs_properties_destroy(properties);
+}
+
 void start_countdown_on_stream(obs_source_t *source)
 {
     if (source == nullptr || std::strcmp(obs_source_get_id(source), "countdown_studio_timer") != 0) {
@@ -1826,14 +1799,7 @@ void start_countdown_on_stream(obs_source_t *source)
         return;
     }
 
-    obs_properties_t *properties = obs_source_properties(source);
-    if (properties != nullptr) {
-        obs_property_t *button = obs_properties_get(properties, reset_on_live ? "restart" : "start");
-        if (button != nullptr) {
-            obs_property_button_clicked(button, nullptr);
-        }
-        obs_properties_destroy(properties);
-    }
+    invoke_countdown_control(source, reset_on_live ? "restart" : "start");
 }
 
 void register_countdown_source()

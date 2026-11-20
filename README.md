@@ -11,7 +11,7 @@ A native OBS Studio source for countdown timers and a customizable local clock. 
 - Countdown timer with pause, resume, reset, and time-add controls.
 - Optional start when OBS begins streaming.
 - Key-moment actions and an optional scene change when the timer ends.
-- Custom text, system or custom fonts, colors, and animations.
+- Custom text, system or custom fonts, colors, and whole-timer or per-digit animations.
 - Clock mode with independent font and color settings, plus an optional customizable frame.
 - In-properties preview that updates as you change settings.
 
@@ -62,7 +62,7 @@ Countdown Studio est une source native pour OBS Studio qui propose un compte à 
 - Compte à rebours avec commandes de pause, reprise, réinitialisation et ajout de temps.
 - Démarrage facultatif au début du direct OBS.
 - Actions aux moments clés et changement de scène facultatif à la fin du décompte.
-- Texte, polices système ou personnalisées, couleurs et animations réglables.
+- Texte, polices système ou personnalisées, couleurs et animations du minuteur entier ou des chiffres seuls.
 - Mode horloge avec police et couleurs indépendantes, ainsi qu’un cadre personnalisable.
 - Aperçu dans les propriétés, actualisé lorsque vous modifiez les réglages.
 

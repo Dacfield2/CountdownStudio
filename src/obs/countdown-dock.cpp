@@ -1,8 +1,9 @@
 #include "countdown-dock.hpp"
 
+#include "countdown-source.hpp"
+
 #include <obs-frontend-api.h>
 #include <obs-module.h>
-#include <obs-properties.h>
 #include <obs-source.h>
 #include <obs.h>
 
@@ -118,16 +119,7 @@ private:
             return;
         }
 
-        obs_properties_t *properties = obs_source_properties(source);
-        if (properties != nullptr) {
-            obs_property_t *property = obs_properties_get(properties, property_name);
-            if (property != nullptr) {
-                for (int index = 0; index < repetitions; ++index) {
-                    obs_property_button_clicked(property, nullptr);
-                }
-            }
-            obs_properties_destroy(properties);
-        }
+        invoke_countdown_control(source, property_name, repetitions);
         obs_source_release(source);
     }
 
