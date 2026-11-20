@@ -1194,13 +1194,6 @@ void set_display_mode_visibility(obs_properties_t *properties, int display_mode)
     if (clock_group != nullptr) {
         obs_property_set_visible(clock_group, !show_countdown);
     }
-    const char *control_names[] = {"start", "pause", "restart", "add_minute", "add_five_minutes"};
-    for (const char *name : control_names) {
-        obs_property_t *property = obs_properties_get(properties, name);
-        if (property != nullptr) {
-            obs_property_set_visible(property, show_countdown);
-        }
-    }
 }
 
 bool display_mode_modified(obs_properties_t *properties, obs_property_t *, obs_data_t *settings)
