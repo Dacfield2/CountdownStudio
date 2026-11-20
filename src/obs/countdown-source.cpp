@@ -217,7 +217,10 @@ QString live_preview_markup(obs_data_t *settings)
         obs_data_get_int(settings, "display_mode"), kDisplayModeCountdown, kDisplayModeClock));
     const bool clock_mode = display_mode == kDisplayModeClock;
     QString sample;
-    if (clock_mode) {
+    const char *preview_text = obs_data_get_string(settings, "preview_text");
+    if (preview_text != nullptr && preview_text[0] != '\0') {
+        sample = QString::fromUtf8(preview_text);
+    } else if (clock_mode) {
         const int clock_format = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "clock_format"), 0, 1));
         sample = QTime::currentTime().toString(clock_format == 0 ? QStringLiteral("HH:mm")
                                                                  : QStringLiteral("HH:mm:ss"));
@@ -647,6 +650,47 @@ public:
     {
         std::lock_guard lock(mutex_);
         return display_mode_;
+    }
+
+    obs_data_t *preview_settings()
+    {
+        std::lock_guard lock(mutex_);
+        obs_data_t *settings = obs_data_create();
+        obs_data_set_int(settings, "display_mode", display_mode_);
+        obs_data_set_int(settings, "clock_format", clock_format_);
+        obs_data_set_int(settings, "time_format", time_format_);
+        obs_data_set_int(settings, "duration_seconds", duration_seconds_);
+        obs_data_set_string(settings, "preview_text", current_timer_text_locked().c_str());
+        obs_data_set_bool(settings, "show_background", show_background_);
+        obs_data_set_bool(settings, "antialiasing", antialiasing_);
+        obs_data_set_int(settings, "text_color", text_color_);
+        obs_data_set_int(settings, "background_color", background_color_);
+        obs_data_set_int(settings, "font_size_percent", font_size_percent_);
+        obs_data_set_string(settings, "custom_font_file", custom_font_path_.c_str());
+        obs_data_set_int(settings, "clock_text_color", clock_text_color_);
+        obs_data_set_int(settings, "clock_font_size_percent", clock_font_size_percent_);
+        obs_data_set_string(settings, "clock_custom_font_file", clock_custom_font_path_.c_str());
+        obs_data_set_bool(settings, "clock_frame_enabled", clock_frame_enabled_);
+        obs_data_set_int(settings, "clock_frame_color", clock_frame_color_);
+        obs_data_set_int(settings, "clock_frame_shape", clock_frame_shape_);
+        obs_data_set_int(settings, "clock_frame_radius", clock_frame_radius_);
+        obs_data_set_int(settings, "clock_frame_padding", clock_frame_padding_);
+        obs_data_set_int(settings, "clock_frame_border_color", clock_frame_border_color_);
+        obs_data_set_int(settings, "clock_frame_border_width", clock_frame_border_width_);
+
+        auto add_font = [settings](const char *key, const std::string &face, const std::string &style,
+                                   int size, uint32_t flags) {
+            obs_data_t *font = obs_data_create();
+            obs_data_set_string(font, "face", face.c_str());
+            obs_data_set_string(font, "style", style.c_str());
+            obs_data_set_int(font, "size", size);
+            obs_data_set_int(font, "flags", flags);
+            obs_data_set_obj(settings, key, font);
+            obs_data_release(font);
+        };
+        add_font("font", font_face_, font_style_, font_size_points_, font_flags_);
+        add_font("clock_font", clock_font_face_, clock_font_style_, clock_font_size_points_, clock_font_flags_);
+        return settings;
     }
 
 private:
@@ -1757,6 +1801,12 @@ obs_properties_t *source_properties(void *data)
     set_display_mode_visibility(properties, data != nullptr
                                                  ? static_cast<CountdownSource *>(data)->display_mode()
                                                  : kDisplayModeCountdown);
+    if (data != nullptr) {
+        obs_data_t *preview_settings = static_cast<CountdownSource *>(data)->preview_settings();
+        const QByteArray markup = live_preview_markup(preview_settings).toUtf8();
+        obs_property_set_description(preview, markup.constData());
+        obs_data_release(preview_settings);
+    }
     return properties;
 }
 
