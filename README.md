@@ -17,6 +17,7 @@ A native OBS countdown timer with its controls and settings inside OBS.
 4. Enable **Start when streaming starts** if the timer should begin with your live. You can choose to reset it first.
 5. Enable up to three **Key moments** to show a message, pause, add one minute, or switch scene when a chosen number of seconds remains.
 6. Optionally choose a scene to switch to after the timer ends, with a delay.
+7. Set **Display mode** to **Current local time** to use the source as a clock. Choose **HH:MM** or **HH:MM:SS**.
 
 ### Appearance and animation
 
@@ -27,6 +28,8 @@ Choose separate animations for starting and changing text. The **Custom** animat
 ### Compatibility and build
 
 Windows x64 packages target OBS 32 and OBS 33+. Linux x64 packages are provided for OBS 32 (legacy) and OBS 33+ (modern). Linux loading has been confirmed on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap installations still need validation. macOS packages are not available yet. SHA-256 checksum files remain available in successful GitHub Actions build artifacts, but are not attached to releases.
+
+The **About** footer in the source properties shows the author and the current project version automatically. The displayed version comes from the same CMake version used for packages.
 
 See [build instructions](docs/BUILDING.md). Countdown Studio is licensed under [GPL-2.0-or-later](LICENSE). The repository is private, so access is required to download packages.
 
@@ -47,6 +50,7 @@ Un minuteur natif pour OBS, avec ses commandes et ses réglages directement dans
 4. Cochez **Démarrer au lancement du direct** pour lancer le minuteur avec le live. Vous pouvez aussi le réinitialiser avant le démarrage.
 5. Activez jusqu’à trois **Actions aux moments clés** : afficher un message, mettre en pause, ajouter une minute ou changer de scène lorsque le nombre de secondes choisi reste.
 6. Vous pouvez choisir une scène à afficher après la fin du décompte et régler un délai.
+7. Choisissez **Heure locale actuelle** dans **Mode d’affichage** pour utiliser la source comme horloge, puis sélectionnez le format **HH:MM** ou **HH:MM:SS**.
 
 ### Apparence et animation
 
@@ -57,5 +61,7 @@ Choisissez une animation pour le démarrage et une autre pour les changements de
 ### Compatibilité et compilation
 
 Des paquets Windows x64 sont prévus pour OBS 32 et OBS 33+. Les paquets Linux x64 existent pour OBS 32 (**legacy**) et OBS 33+ (**modern**). Le chargement Linux a été confirmé sous Ubuntu 26.04 avec OBS 33; OBS 32 Linux et Flatpak/Snap restent à vérifier. Le paquet macOS n’est pas encore disponible. Les fichiers SHA-256 restent dans les artefacts de compilation GitHub Actions, mais ne sont pas joints aux releases.
+
+Le pied de page **À propos** des propriétés affiche l’auteur et la version actuelle du projet. La version est générée depuis le même numéro CMake que celui utilisé pour créer les paquets.
 
 Consultez les [instructions de compilation](docs/BUILDING.md). Countdown Studio est sous licence [GPL-2.0-or-later](LICENSE). Le dépôt est privé : il faut y avoir accès pour télécharger les paquets.
