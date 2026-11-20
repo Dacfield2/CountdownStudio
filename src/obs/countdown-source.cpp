@@ -19,6 +19,7 @@
 #include <QMetaObject>
 #include <QObject>
 #include <QPainter>
+#include <QPen>
 #include <QString>
 #include <QStringList>
 #include <QTime>
@@ -54,6 +55,10 @@ constexpr int kMomentAddMinute = 2;
 constexpr int kMomentSwitchScene = 3;
 constexpr int kDisplayModeCountdown = 0;
 constexpr int kDisplayModeClock = 1;
+constexpr int kClockFrameRectangle = 0;
+constexpr int kClockFrameRounded = 1;
+constexpr int kClockFramePill = 2;
+constexpr int kClockFrameEllipse = 3;
 
 struct MomentRule {
     bool enabled{false};
@@ -170,12 +175,49 @@ int64_t display_seconds(Countdown::Duration remaining)
     return std::chrono::ceil<std::chrono::seconds>(remaining).count();
 }
 
+QString preview_custom_font_family(obs_data_t *settings, const char *path_key)
+{
+    const char *raw_path = obs_data_get_string(settings, path_key);
+    const std::string path = raw_path != nullptr ? raw_path : "";
+    static std::mutex preview_font_mutex;
+    static std::string loaded_path;
+    static QString loaded_family;
+    static int loaded_font_id = -1;
+
+    std::lock_guard lock(preview_font_mutex);
+    if (path == loaded_path) {
+        return loaded_family;
+    }
+
+    if (loaded_font_id >= 0) {
+        QFontDatabase::removeApplicationFont(loaded_font_id);
+        loaded_font_id = -1;
+    }
+    loaded_path = path;
+    loaded_family.clear();
+    if (path.empty()) {
+        return loaded_family;
+    }
+
+    loaded_font_id = QFontDatabase::addApplicationFont(QString::fromUtf8(path.c_str()));
+    if (loaded_font_id < 0) {
+        return loaded_family;
+    }
+
+    const QStringList families = QFontDatabase::applicationFontFamilies(loaded_font_id);
+    if (!families.isEmpty()) {
+        loaded_family = families.front();
+    }
+    return loaded_family;
+}
+
 QString live_preview_markup(obs_data_t *settings)
 {
     const int display_mode = static_cast<int>(std::clamp<int64_t>(
         obs_data_get_int(settings, "display_mode"), kDisplayModeCountdown, kDisplayModeClock));
+    const bool clock_mode = display_mode == kDisplayModeClock;
     QString sample;
-    if (display_mode == kDisplayModeClock) {
+    if (clock_mode) {
         const int clock_format = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "clock_format"), 0, 1));
         sample = QTime::currentTime().toString(clock_format == 0 ? QStringLiteral("HH:mm")
                                                                  : QStringLiteral("HH:mm:ss"));
@@ -185,18 +227,22 @@ QString live_preview_markup(obs_data_t *settings)
         sample = QString::fromUtf8(format_remaining(duration, time_format).c_str());
     }
 
-    QColor text_color = qcolor_from_obs_rgba(static_cast<uint32_t>(obs_data_get_int(settings, "text_color")));
-    QColor background_color =
-        qcolor_from_obs_rgba(static_cast<uint32_t>(obs_data_get_int(settings, "background_color")));
-    const bool show_background = obs_data_get_bool(settings, "show_background");
-    const int size_percent = static_cast<int>(
-        std::clamp<int64_t>(obs_data_get_int(settings, "font_size_percent"), 25, 100));
+    const uint32_t text_color_value = static_cast<uint32_t>(
+        obs_data_get_int(settings, clock_mode ? "clock_text_color" : "text_color"));
+    QColor text_color = qcolor_from_obs_rgba(text_color_value);
+    const bool show_background = clock_mode ? obs_data_get_bool(settings, "clock_frame_enabled")
+                                            : obs_data_get_bool(settings, "show_background");
+    const uint32_t background_color_value = static_cast<uint32_t>(
+        obs_data_get_int(settings, clock_mode ? "clock_frame_color" : "background_color"));
+    QColor background_color = qcolor_from_obs_rgba(background_color_value);
+    const int size_percent = static_cast<int>(std::clamp<int64_t>(
+        obs_data_get_int(settings, clock_mode ? "clock_font_size_percent" : "font_size_percent"), 25, 100));
 
     QString font_family = QStringLiteral("Arial");
     QString font_weight = QStringLiteral("400");
     QString font_style = QStringLiteral("normal");
     uint32_t font_flags = 0;
-    obs_data_t *font = obs_data_get_obj(settings, "font");
+    obs_data_t *font = obs_data_get_obj(settings, clock_mode ? "clock_font" : "font");
     if (font != nullptr) {
         const char *face = obs_data_get_string(font, "face");
         if (face != nullptr && face[0] != '\0') {
@@ -205,13 +251,19 @@ QString live_preview_markup(obs_data_t *settings)
         font_flags = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
         obs_data_release(font);
     }
+    const QString custom_family = preview_custom_font_family(
+        settings, clock_mode ? "clock_custom_font_file" : "custom_font_file");
+    if (!custom_family.isEmpty()) {
+        font_family = custom_family;
+    }
     if ((font_flags & OBS_FONT_BOLD) != 0) {
         font_weight = QStringLiteral("700");
     }
     if ((font_flags & OBS_FONT_ITALIC) != 0) {
         font_style = QStringLiteral("italic");
     }
-    font_family.replace(QLatin1Char('\''), QStringLiteral("&#39;"));
+    font_family.replace(QLatin1Char('"'), QLatin1Char(' '));
+    font_family.replace(QLatin1Char('\''), QLatin1Char(' '));
 
     auto rgba = [](const QColor &color) {
         return QStringLiteral("rgba(%1,%2,%3,%4)")
@@ -220,14 +272,44 @@ QString live_preview_markup(obs_data_t *settings)
             .arg(color.blue())
             .arg(color.alphaF(), 0, 'f', 3);
     };
-    const QString background = show_background ? rgba(background_color) : QStringLiteral("transparent");
+
+    QString fill = show_background ? rgba(background_color) : QStringLiteral("transparent");
+    int border_width = clock_mode && show_background
+                           ? static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "clock_frame_border_width"),
+                                                                  0, 20))
+                           : 0;
+    QColor border_color = qcolor_from_obs_rgba(static_cast<uint32_t>(
+        obs_data_get_int(settings, "clock_frame_border_color")));
+    const int frame_shape = static_cast<int>(std::clamp<int64_t>(
+        obs_data_get_int(settings, "clock_frame_shape"), kClockFrameRectangle, kClockFrameEllipse));
+    const int radius = static_cast<int>(std::clamp<int64_t>(
+        obs_data_get_int(settings, "clock_frame_radius"), 0, 180));
+    const int padding = clock_mode && show_background
+                            ? static_cast<int>(std::clamp<int64_t>(obs_data_get_int(settings, "clock_frame_padding"),
+                                                                   0, 120))
+                            : 0;
+    QString border_radius = QStringLiteral("0px");
+    if (frame_shape == kClockFrameRounded) {
+        border_radius = QStringLiteral("%1px").arg(radius);
+    } else if (frame_shape == kClockFramePill) {
+        border_radius = QStringLiteral("9999px");
+    } else if (frame_shape == kClockFrameEllipse) {
+        border_radius = QStringLiteral("50%");
+    }
+
     const int font_size = 58 * size_percent / 100;
-    QString html = QStringLiteral(
-        "<html><body style='margin:0'><table width='620' height='150' cellspacing='0' cellpadding='0' "
-        "style='background-color:%1'><tr><td align='center' valign='middle'>"
-        "<span style=\"font-family:'%2';font-size:%3px;color:%4;font-weight:%5;font-style:%6;\">%7</span>"
-        "</td></tr></table></body></html>");
-    return html.arg(background)
+    const QString html = QStringLiteral(
+        "<html><body style='margin:0;padding:0;background:transparent'>"
+        "<table width='620' height='180' cellspacing='0' cellpadding='0'><tr><td align='center' valign='middle'>"
+        "<table cellspacing='0' cellpadding='%1' style='background-color:%2;border:%3px solid %4;"
+        "border-radius:%5;'><tr><td align='center'>"
+        "<span style=\"font-family:'%6';font-size:%7px;color:%8;font-weight:%9;font-style:%10;\">%11</span>"
+        "</td></tr></table></td></tr></table></body></html>");
+    return html.arg(QString::number(padding))
+        .arg(fill)
+        .arg(QString::number(border_width))
+        .arg(rgba(border_color))
+        .arg(border_radius)
         .arg(font_family.toHtmlEscaped())
         .arg(QString::number(font_size))
         .arg(rgba(text_color))
@@ -279,6 +361,8 @@ public:
           pixels_(static_cast<std::size_t>(kCanvasWidth) * kCanvasHeight * kChannels, 0)
     {
         read_font_settings(settings);
+        read_clock_appearance_settings(settings);
+        read_clock_font_settings(settings);
         if (display_mode_ == kDisplayModeCountdown && auto_start_ && !start_on_stream_start_) {
             timer_.start();
         }
@@ -294,6 +378,9 @@ public:
     {
         if (custom_font_id_ >= 0) {
             QFontDatabase::removeApplicationFont(custom_font_id_);
+        }
+        if (clock_custom_font_id_ >= 0) {
+            QFontDatabase::removeApplicationFont(clock_custom_font_id_);
         }
         if (texture_ != nullptr) {
             obs_enter_graphics();
@@ -389,6 +476,8 @@ public:
             previous_text_ = current_text_;
         }
         read_font_settings(settings);
+        read_clock_appearance_settings(settings);
+        read_clock_font_settings(settings);
 
         if (new_duration != duration_seconds_ || new_auto_start != auto_start_
             || new_start_on_stream_start != start_on_stream_start_ || display_mode_changed) {
@@ -695,6 +784,82 @@ private:
         custom_font_family_ = families.front().toUtf8().toStdString();
     }
 
+    void read_clock_appearance_settings(obs_data_t *settings)
+    {
+        clock_text_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "clock_text_color"));
+        clock_font_size_percent_ = static_cast<int>(
+            std::clamp<int64_t>(obs_data_get_int(settings, "clock_font_size_percent"), 25, 100));
+        clock_frame_enabled_ = obs_data_get_bool(settings, "clock_frame_enabled");
+        clock_frame_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "clock_frame_color"));
+        clock_frame_shape_ = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_frame_shape"), kClockFrameRectangle, kClockFrameEllipse));
+        clock_frame_radius_ = static_cast<int>(
+            std::clamp<int64_t>(obs_data_get_int(settings, "clock_frame_radius"), 0, 180));
+        clock_frame_padding_ = static_cast<int>(
+            std::clamp<int64_t>(obs_data_get_int(settings, "clock_frame_padding"), 0, 120));
+        clock_frame_border_color_ = static_cast<uint32_t>(obs_data_get_int(settings, "clock_frame_border_color"));
+        clock_frame_border_width_ = static_cast<int>(
+            std::clamp<int64_t>(obs_data_get_int(settings, "clock_frame_border_width"), 0, 20));
+    }
+
+    void read_clock_font_settings(obs_data_t *settings)
+    {
+        const char *custom_font_file = obs_data_get_string(settings, "clock_custom_font_file");
+        load_clock_custom_font(custom_font_file != nullptr ? custom_font_file : "");
+
+        obs_data_t *font = obs_data_get_obj(settings, "clock_font");
+        if (font == nullptr) {
+            return;
+        }
+
+        const char *face = obs_data_get_string(font, "face");
+        const char *style = obs_data_get_string(font, "style");
+        if (face != nullptr && face[0] != ' ') {
+            clock_font_face_ = face;
+        }
+        if (style != nullptr) {
+            clock_font_style_ = style;
+        }
+        clock_font_size_points_ = static_cast<int>(std::clamp<int64_t>(obs_data_get_int(font, "size"), 1, 1000));
+        clock_font_flags_ = static_cast<uint32_t>(obs_data_get_int(font, "flags"));
+        obs_data_release(font);
+    }
+
+    void load_clock_custom_font(const std::string &path)
+    {
+        if (path == clock_custom_font_path_) {
+            return;
+        }
+
+        clock_custom_font_path_ = path;
+        clock_custom_font_family_.clear();
+        if (clock_custom_font_id_ >= 0) {
+            QFontDatabase::removeApplicationFont(clock_custom_font_id_);
+            clock_custom_font_id_ = -1;
+        }
+        if (clock_custom_font_path_.empty()) {
+            return;
+        }
+
+        const int font_id = QFontDatabase::addApplicationFont(QString::fromUtf8(clock_custom_font_path_.c_str()));
+        if (font_id < 0) {
+            blog(LOG_WARNING, "[CountdownStudio] Could not load custom clock font file: %s",
+                 clock_custom_font_path_.c_str());
+            return;
+        }
+
+        const QStringList families = QFontDatabase::applicationFontFamilies(font_id);
+        if (families.isEmpty()) {
+            QFontDatabase::removeApplicationFont(font_id);
+            blog(LOG_WARNING, "[CountdownStudio] No usable custom clock font family found: %s",
+                 clock_custom_font_path_.c_str());
+            return;
+        }
+
+        clock_custom_font_id_ = font_id;
+        clock_custom_font_family_ = families.front().toUtf8().toStdString();
+    }
+
     void render_pixels_locked()
     {
         refresh_display_text_locked();
@@ -706,21 +871,29 @@ private:
         QPainter painter(&image);
         painter.setRenderHint(QPainter::Antialiasing, antialiasing_);
         painter.setRenderHint(QPainter::TextAntialiasing, antialiasing_);
-        if (show_background_) {
+        const bool clock_mode = display_mode_ == kDisplayModeClock;
+        if (!clock_mode && show_background_) {
             painter.fillRect(image.rect(), qcolor_from_obs_rgba(background_color_));
         }
 
-        const bool use_custom_font = !custom_font_family_.empty();
-        const std::string &font_family = use_custom_font ? custom_font_family_ : font_face_;
+        const std::string &active_custom_font_family = clock_mode ? clock_custom_font_family_ : custom_font_family_;
+        const bool use_custom_font = !active_custom_font_family.empty();
+        const std::string &font_family = use_custom_font ? active_custom_font_family
+                                                         : (clock_mode ? clock_font_face_ : font_face_);
+        const std::string &font_style = clock_mode ? clock_font_style_ : font_style_;
+        const uint32_t font_flags = clock_mode ? clock_font_flags_ : font_flags_;
+        const int font_size_points = clock_mode ? clock_font_size_points_ : font_size_points_;
+        const int active_font_size_percent = clock_mode ? clock_font_size_percent_ : font_size_percent_;
+        const uint32_t active_text_color = clock_mode ? clock_text_color_ : text_color_;
         QFont font(QString::fromUtf8(font_family.c_str()));
         if (!use_custom_font) {
-            font.setStyleName(QString::fromUtf8(font_style_.c_str()));
+            font.setStyleName(QString::fromUtf8(font_style.c_str()));
         }
-        font.setBold((font_flags_ & OBS_FONT_BOLD) != 0);
-        font.setItalic((font_flags_ & OBS_FONT_ITALIC) != 0);
-        font.setUnderline((font_flags_ & OBS_FONT_UNDERLINE) != 0);
-        font.setStrikeOut((font_flags_ & OBS_FONT_STRIKEOUT) != 0);
-        font.setPointSize(font_size_points_);
+        font.setBold((font_flags & OBS_FONT_BOLD) != 0);
+        font.setItalic((font_flags & OBS_FONT_ITALIC) != 0);
+        font.setUnderline((font_flags & OBS_FONT_UNDERLINE) != 0);
+        font.setStrikeOut((font_flags & OBS_FONT_STRIKEOUT) != 0);
+        font.setPointSize(font_size_points);
 
         const QString display_text = QString::fromUtf8(current_text_.c_str());
         const QString previous_text = QString::fromUtf8(previous_text_.c_str());
@@ -733,7 +906,7 @@ private:
         const double text_height = std::max(current_bounds.height(), previous_bounds.height());
         const double width_scale = width_limit / std::max(1.0, text_width);
         const double height_scale = height_limit / std::max(1.0, text_height);
-        const double fit_scale = std::min({1.0, width_scale, height_scale}) * font_size_percent_ / 100.0;
+        const double fit_scale = std::min({1.0, width_scale, height_scale}) * active_font_size_percent / 100.0;
         font.setPointSizeF(std::max(1.0, font.pointSizeF() * fit_scale));
 
         const double raw_progress = animation_active_
@@ -750,6 +923,38 @@ private:
 
         const double center_x = static_cast<double>(kCanvasWidth) / 2.0;
         const double center_y = static_cast<double>(kCanvasHeight) / 2.0;
+        if (clock_mode && clock_frame_enabled_) {
+            const QFontMetricsF frame_metrics(font);
+            const double text_width = frame_metrics.horizontalAdvance(display_text);
+            const double text_height = frame_metrics.height();
+            const double padding = static_cast<double>(clock_frame_padding_);
+            QRectF frame_rect(center_x - text_width / 2.0 - padding,
+                              center_y - text_height / 2.0 - padding,
+                              text_width + 2.0 * padding,
+                              text_height + 2.0 * padding);
+            const double border_width = static_cast<double>(clock_frame_border_width_);
+            frame_rect.adjust(border_width / 2.0, border_width / 2.0, -border_width / 2.0, -border_width / 2.0);
+            painter.setBrush(qcolor_from_obs_rgba(clock_frame_color_));
+            painter.setPen(clock_frame_border_width_ > 0
+                               ? QPen(qcolor_from_obs_rgba(clock_frame_border_color_), border_width)
+                               : QPen(Qt::NoPen));
+            switch (clock_frame_shape_) {
+            case kClockFrameRounded:
+                painter.drawRoundedRect(frame_rect, static_cast<double>(clock_frame_radius_),
+                                         static_cast<double>(clock_frame_radius_), Qt::AbsoluteSize);
+                break;
+            case kClockFramePill:
+                painter.drawRoundedRect(frame_rect, frame_rect.height() / 2.0, frame_rect.height() / 2.0,
+                                         Qt::AbsoluteSize);
+                break;
+            case kClockFrameEllipse:
+                painter.drawEllipse(frame_rect);
+                break;
+            default:
+                painter.drawRect(frame_rect);
+                break;
+            }
+        }
         auto draw_layer = [&](const QString &text, double opacity, double scale, double offset_x, double offset_y,
                               bool reveal, double rotation_degrees = 0.0) {
             if (text.isEmpty() || opacity <= 0.0) {
@@ -758,7 +963,7 @@ private:
 
             painter.save();
             painter.setFont(font);
-            painter.setPen(qcolor_from_obs_rgba(text_color_));
+            painter.setPen(qcolor_from_obs_rgba(active_text_color));
             painter.setOpacity(std::clamp(opacity, 0.0, 1.0));
             if (reveal) {
                 const double line_width = QFontMetricsF(font).horizontalAdvance(text);
@@ -843,7 +1048,7 @@ private:
                 const double glyph_center_x = x + width / 2.0;
                 painter.save();
                 painter.setFont(font);
-                painter.setPen(qcolor_from_obs_rgba(text_color_));
+                painter.setPen(qcolor_from_obs_rgba(active_text_color));
                 painter.setOpacity(std::clamp(opacity, 0.0, 1.0));
                 painter.setClipRect(QRectF(x, 0.0, width * std::clamp(reveal_fraction, 0.0, 1.0),
                                            static_cast<double>(kCanvasHeight)), Qt::IntersectClip);
@@ -978,7 +1183,7 @@ private:
             }
             painter.save();
             painter.setFont(font);
-            painter.setPen(qcolor_from_obs_rgba(text_color_));
+            painter.setPen(qcolor_from_obs_rgba(active_text_color));
             painter.translate(center_x, center_y);
             painter.scale(1.0, scale_y);
             painter.translate(-center_x, -center_y);
@@ -1081,6 +1286,22 @@ private:
     bool antialiasing_;
     uint32_t text_color_;
     uint32_t background_color_;
+    uint32_t clock_text_color_{kDefaultTextColor};
+    int clock_font_size_percent_{100};
+    bool clock_frame_enabled_{false};
+    uint32_t clock_frame_color_{0x99000000};
+    int clock_frame_shape_{kClockFrameRounded};
+    int clock_frame_radius_{28};
+    int clock_frame_padding_{24};
+    uint32_t clock_frame_border_color_{kDefaultTextColor};
+    int clock_frame_border_width_{0};
+    std::string clock_font_face_{"Arial"};
+    std::string clock_font_style_{"Regular"};
+    std::string clock_custom_font_path_;
+    std::string clock_custom_font_family_;
+    int clock_custom_font_id_{-1};
+    int clock_font_size_points_{144};
+    uint32_t clock_font_flags_{0};
     int font_size_percent_;
     int time_format_;
     std::string end_message_;
@@ -1177,10 +1398,28 @@ void source_defaults(obs_data_t *settings)
     obs_data_release(font);
 
     obs_data_set_default_string(settings, "custom_font_file", "");
+
+    obs_data_t *clock_font = obs_data_create();
+    obs_data_set_default_string(clock_font, "face", "Arial");
+    obs_data_set_default_string(clock_font, "style", "Regular");
+    obs_data_set_default_int(clock_font, "size", 144);
+    obs_data_set_default_int(clock_font, "flags", 0);
+    obs_data_set_default_obj(settings, "clock_font", clock_font);
+    obs_data_release(clock_font);
+    obs_data_set_default_string(settings, "clock_custom_font_file", "");
     obs_data_set_default_int(settings, "duration_seconds", kDefaultDurationSeconds);
     obs_data_set_default_string(settings, "live_preview", "");
     obs_data_set_default_int(settings, "display_mode", kDisplayModeCountdown);
     obs_data_set_default_int(settings, "clock_format", 0);
+    obs_data_set_default_int(settings, "clock_text_color", kDefaultTextColor);
+    obs_data_set_default_int(settings, "clock_font_size_percent", 100);
+    obs_data_set_default_bool(settings, "clock_frame_enabled", false);
+    obs_data_set_default_int(settings, "clock_frame_color", 0x99000000);
+    obs_data_set_default_int(settings, "clock_frame_shape", kClockFrameRounded);
+    obs_data_set_default_int(settings, "clock_frame_radius", 28);
+    obs_data_set_default_int(settings, "clock_frame_padding", 24);
+    obs_data_set_default_int(settings, "clock_frame_border_color", kDefaultTextColor);
+    obs_data_set_default_int(settings, "clock_frame_border_width", 0);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
     obs_data_set_default_bool(settings, "antialiasing", true);
@@ -1250,16 +1489,20 @@ void set_display_mode_visibility(obs_properties_t *properties, int display_mode)
 {
     const bool show_countdown = display_mode == kDisplayModeCountdown;
     const char *countdown_groups[] = {
-        "general_group", "start_settings_group", "end_settings_group", "display_format_group", "moments_group"};
+        "general_group", "start_settings_group", "end_settings_group", "display_format_group", "moments_group",
+        "appearance_group"};
     for (const char *name : countdown_groups) {
         obs_property_t *property = obs_properties_get(properties, name);
         if (property != nullptr) {
             obs_property_set_visible(property, show_countdown);
         }
     }
-    obs_property_t *clock_group = obs_properties_get(properties, "clock_format_group");
-    if (clock_group != nullptr) {
-        obs_property_set_visible(clock_group, !show_countdown);
+    const char *clock_groups[] = {"clock_format_group", "clock_appearance_group"};
+    for (const char *name : clock_groups) {
+        obs_property_t *property = obs_properties_get(properties, name);
+        if (property != nullptr) {
+            obs_property_set_visible(property, !show_countdown);
+        }
     }
 }
 
@@ -1346,11 +1589,59 @@ obs_properties_t *source_properties(void *data)
     obs_properties_add_group(properties, "clock_format_group", obs_module_text("Settings.ClockSettingsGroup"),
                              OBS_GROUP_NORMAL, clock_settings);
 
+    auto *clock_appearance = obs_properties_create();
+    auto *clock_text_color = obs_properties_add_color_alpha(
+        clock_appearance, "clock_text_color", obs_module_text("Settings.ClockTextColor"));
+    obs_property_set_modified_callback(clock_text_color, live_preview_modified);
+    auto *clock_font = obs_properties_add_font(clock_appearance, "clock_font", obs_module_text("Settings.ClockFont"));
+    obs_property_set_modified_callback(clock_font, live_preview_modified);
+    auto *clock_custom_font = obs_properties_add_path(
+        clock_appearance, "clock_custom_font_file", obs_module_text("Settings.ClockCustomFontFile"),
+        OBS_PATH_FILE, "Font files (*.ttf *.otf *.ttc)", nullptr);
+    obs_property_set_modified_callback(clock_custom_font, live_preview_modified);
+    auto *clock_font_size = obs_properties_add_int_slider(
+        clock_appearance, "clock_font_size_percent", obs_module_text("Settings.ClockFontSize"), 25, 100, 1);
+    obs_property_set_modified_callback(clock_font_size, live_preview_modified);
+    auto *clock_frame_enabled = obs_properties_add_bool(
+        clock_appearance, "clock_frame_enabled", obs_module_text("Settings.ClockFrameEnabled"));
+    obs_property_set_modified_callback(clock_frame_enabled, live_preview_modified);
+    auto *clock_frame_color = obs_properties_add_color_alpha(
+        clock_appearance, "clock_frame_color", obs_module_text("Settings.ClockFrameColor"));
+    obs_property_set_modified_callback(clock_frame_color, live_preview_modified);
+    auto *clock_frame_shape = obs_properties_add_list(
+        clock_appearance, "clock_frame_shape", obs_module_text("Settings.ClockFrameShape"),
+        OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_list_add_int(clock_frame_shape, obs_module_text("Settings.ClockFrameRectangle"), kClockFrameRectangle);
+    obs_property_list_add_int(clock_frame_shape, obs_module_text("Settings.ClockFrameRounded"), kClockFrameRounded);
+    obs_property_list_add_int(clock_frame_shape, obs_module_text("Settings.ClockFramePill"), kClockFramePill);
+    obs_property_list_add_int(clock_frame_shape, obs_module_text("Settings.ClockFrameEllipse"), kClockFrameEllipse);
+    obs_property_set_modified_callback(clock_frame_shape, live_preview_modified);
+    auto *clock_frame_radius = obs_properties_add_int_slider(
+        clock_appearance, "clock_frame_radius", obs_module_text("Settings.ClockFrameRadius"), 0, 180, 1);
+    obs_property_set_modified_callback(clock_frame_radius, live_preview_modified);
+    auto *clock_frame_padding = obs_properties_add_int_slider(
+        clock_appearance, "clock_frame_padding", obs_module_text("Settings.ClockFramePadding"), 0, 120, 1);
+    obs_property_set_modified_callback(clock_frame_padding, live_preview_modified);
+    auto *clock_frame_border_color = obs_properties_add_color_alpha(
+        clock_appearance, "clock_frame_border_color", obs_module_text("Settings.ClockFrameBorderColor"));
+    obs_property_set_modified_callback(clock_frame_border_color, live_preview_modified);
+    auto *clock_frame_border_width = obs_properties_add_int_slider(
+        clock_appearance, "clock_frame_border_width", obs_module_text("Settings.ClockFrameBorderWidth"), 0, 20, 1);
+    obs_property_set_modified_callback(clock_frame_border_width, live_preview_modified);
+    obs_properties_add_group(properties, "clock_appearance_group", obs_module_text("Settings.ClockAppearanceGroup"),
+                             OBS_GROUP_NORMAL, clock_appearance);
+
+    auto *rendering_settings = obs_properties_create();
+    auto *antialiasing = obs_properties_add_bool(rendering_settings, "antialiasing",
+                                                  obs_module_text("Settings.Antialiasing"));
+    obs_property_set_modified_callback(antialiasing, live_preview_modified);
+    obs_properties_add_group(properties, "rendering_group", obs_module_text("Settings.RenderingGroup"),
+                             OBS_GROUP_NORMAL, rendering_settings);
+
     auto *appearance = obs_properties_create();
     auto *show_background = obs_properties_add_bool(appearance, "show_background",
                                                      obs_module_text("Settings.ShowBackground"));
     obs_property_set_modified_callback(show_background, live_preview_modified);
-    obs_properties_add_bool(appearance, "antialiasing", obs_module_text("Settings.Antialiasing"));
     auto *text_color = obs_properties_add_color_alpha(appearance, "text_color", obs_module_text("Settings.TextColor"));
     obs_property_set_modified_callback(text_color, live_preview_modified);
     auto *background_color = obs_properties_add_color_alpha(
