@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(CountdownStudio VERSION 0.2.0 LANGUAGES CXX)
+project(CountdownStudio VERSION 0.2.1 LANGUAGES CXX)
 
 include(CTest)
 
@@ -95,7 +95,8 @@ if(WIN32)
     set(CPACK_PACKAGE_INSTALL_DIRECTORY "CountdownStudio")
     set(CPACK_NSIS_PACKAGE_NAME "Countdown Studio OBS Plugin")
     set(CPACK_NSIS_DISPLAY_NAME "Countdown Studio OBS Plugin")
-    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    # Upgrade in place: an older installer may have a stale or missing uninstaller.
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL OFF)
 else()
     set(CPACK_GENERATOR "ZIP")
 endif()

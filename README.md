@@ -6,7 +6,7 @@ A native OBS countdown timer with its controls and settings inside OBS.
 
 ### Install
 
-- **Windows:** Download the OBS 32 or OBS 33+ installer from [Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), close OBS, run the installer, and reopen OBS.
+- **Windows:** Download the OBS 32 or OBS 33+ installer from [Releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), close OBS, run the installer, and reopen OBS. To update, run it over the existing installation; it no longer calls the older uninstaller.
 - **Linux:** Download the OBS 32 **legacy** ZIP or OBS 33+ **modern** ZIP, extract it, close OBS, and run `install-linux.sh`. Then reopen OBS.
 
 ### Use
@@ -36,7 +36,7 @@ Un minuteur natif pour OBS, avec ses commandes et ses réglages directement dans
 
 ### Installation
 
-- **Windows :** téléchargez l’installateur OBS 32 ou OBS 33+ depuis les [releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), fermez OBS, lancez l’installateur, puis rouvrez OBS.
+- **Windows :** téléchargez l’installateur OBS 32 ou OBS 33+ depuis les [releases](https://github.com/Dacfield2/CountdownStudio/releases/latest), fermez OBS, lancez l’installateur, puis rouvrez OBS. Pour mettre à jour, lancez-le sur l’installation existante; il n’appelle plus l’ancien désinstallateur.
 - **Linux :** téléchargez le ZIP **legacy** pour OBS 32 ou **modern** pour OBS 33+, extrayez-le, fermez OBS, puis lancez `install-linux.sh`. Rouvrez OBS ensuite.
 
 ### Utilisation

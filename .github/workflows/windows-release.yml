@@ -195,7 +195,8 @@ jobs:
           cat > release-notes.md <<'EOF'
           ## English
 
-          ### Changes in 0.2.0
+          ### Changes in 0.2.1
+          - Fix Windows upgrades: the setup replaces the existing plugin files without calling an older uninstaller, which may be missing or stale.
           - Start the timer automatically when OBS starts streaming, with an optional reset to the full duration.
           - Configure up to three key-moment actions: show a message, pause, add one minute, or switch scene.
           - Switch to a chosen OBS scene after the timer ends, immediately or after a delay.
@@ -207,7 +208,8 @@ jobs:
 
           ## Français
 
-          ### Changements de la version 0.2.0
+          ### Changements de la version 0.2.1
+          - Correction de la mise à jour Windows : l’installateur remplace les fichiers sans appeler l’ancien désinstallateur, qui peut être manquant ou périmé.
           - Démarrage automatique du minuteur au début du direct, avec réinitialisation facultative à la durée complète.
           - Jusqu’à trois actions personnalisables à des moments clés : afficher un message, mettre en pause, ajouter une minute ou changer de scène.
           - Changement vers une scène OBS après la fin du décompte, immédiatement ou après un délai.
