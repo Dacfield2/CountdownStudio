@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Install NSIS for CPack
         shell: pwsh
@@ -47,6 +49,8 @@ jobs:
 
       - name: Build and package OBS plugin
         shell: pwsh
+        env:
+          COUNTDOWNSTUDIO_RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: ./scripts/Build-Windows-Obs.ps1 -ObsVersion '${{ matrix.obs-version }}'
 
       - name: Upload verified packages
@@ -132,6 +136,8 @@ jobs:
 
       - name: Build and package OBS plugin
         shell: bash
+        env:
+          COUNTDOWNSTUDIO_RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
           build_dir="build-obs-${{ matrix.family }}-linux"
@@ -192,29 +198,34 @@ jobs:
           set -euo pipefail
           test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 10
 
-          cat > release-notes.md <<'EOF'
+          release_version="${RELEASE_TAG#v}"
+          cat > release-notes.md <<EOF
           ## English
 
-          ### Changes in 0.2.1
+          ### Changes in ${release_version}
           - Fix Windows upgrades: the setup replaces the existing plugin files without calling an older uninstaller, which may be missing or stale.
           - Start the timer automatically when OBS starts streaming, with an optional reset to the full duration.
           - Configure up to three key-moment actions: show a message, pause, add one minute, or switch scene.
           - Switch to a chosen OBS scene after the timer ends, immediately or after a delay.
           - Organize source settings into clear sections and hide the source toolbar controls until the timer source is selected.
           - Create a custom native animation by setting its starting scale, position, rotation, and fade. Keep digit-only animation, easing, duration, and stagger controls.
+          - Use the source as a local clock in HH:MM or HH:MM:SS format, with a live preview in the source properties.
+          - Display the author and release version automatically in the properties footer.
 
           ### Packages
           Windows x64 installers and ZIP packages for OBS Studio 32 and 33+, plus Linux x64 ZIP packages built on Ubuntu 24.04 (OBS 32) and Ubuntu 26.04 (OBS 33). Linux loading is verified on Ubuntu 26.04 with OBS 33; OBS 32 Linux and Flatpak/Snap remain unverified. The NSIS installer is unsigned.
 
           ## Français
 
-          ### Changements de la version 0.2.1
+          ### Changements de la version ${release_version}
           - Correction de la mise à jour Windows : l’installateur remplace les fichiers sans appeler l’ancien désinstallateur, qui peut être manquant ou périmé.
           - Démarrage automatique du minuteur au début du direct, avec réinitialisation facultative à la durée complète.
           - Jusqu’à trois actions personnalisables à des moments clés : afficher un message, mettre en pause, ajouter une minute ou changer de scène.
           - Changement vers une scène OBS après la fin du décompte, immédiatement ou après un délai.
           - Réglages de la source organisés en sections et commandes masquées tant que la source minuteur n’est pas sélectionnée.
           - Création d’une animation native personnalisée en réglant sa taille, sa position, sa rotation et son fondu de départ. Les options d’animation par chiffre, d’accélération, de durée et de décalage restent disponibles.
+          - Utilisation de la source comme horloge locale au format HH:MM ou HH:MM:SS, avec aperçu actualisé dans les propriétés.
+          - Affichage automatique de l’auteur et de la version de la release dans le pied de page des propriétés.
 
           ### Paquets
           Installateurs Windows x64 et archives ZIP pour OBS Studio 32 et 33+, ainsi que des ZIP Linux x64 compilés sous Ubuntu 24.04 (OBS 32) et Ubuntu 26.04 (OBS 33). Le chargement Linux est vérifié sous Ubuntu 26.04 avec OBS 33; OBS 32 Linux et Flatpak/Snap restent à vérifier. L’installateur NSIS n’est pas signé.
