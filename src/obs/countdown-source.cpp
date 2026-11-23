@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -59,6 +60,11 @@ constexpr int kClockFrameRectangle = 0;
 constexpr int kClockFrameRounded = 1;
 constexpr int kClockFramePill = 2;
 constexpr int kClockFrameEllipse = 3;
+constexpr int kClockMessageAnimationNone = 0;
+constexpr int kClockMessageAnimationFade = 1;
+constexpr int kClockMessageAnimationSlideUp = 2;
+constexpr int kClockMessageAnimationSlideLeft = 3;
+constexpr int kClockMessageAnimationZoom = 4;
 constexpr double kPi = 3.14159265358979323846;
 
 struct MomentRule {
@@ -76,6 +82,25 @@ std::string read_string_setting(obs_data_t *settings, const char *name)
 {
     const char *value = obs_data_get_string(settings, name);
     return value != nullptr ? value : "";
+}
+
+std::vector<std::string> read_clock_messages(obs_data_t *settings)
+{
+    std::vector<std::string> messages;
+    std::istringstream stream(read_string_setting(settings, "clock_messages"));
+    std::string line;
+    while (std::getline(stream, line)) {
+        const auto first = std::find_if_not(line.begin(), line.end(), [](unsigned char character) {
+            return std::isspace(character) != 0;
+        });
+        const auto last = std::find_if_not(line.rbegin(), line.rend(), [](unsigned char character) {
+            return std::isspace(character) != 0;
+        }).base();
+        if (first < last) {
+            messages.emplace_back(first, last);
+        }
+    }
+    return messages;
 }
 
 void read_font_properties(obs_data_t *settings, const char *name, std::string &face, std::string &style,
@@ -297,6 +322,16 @@ QString live_preview_markup(obs_data_t *settings)
         sample = QString::fromUtf8(format_remaining(duration, time_format).c_str());
     }
 
+    QString clock_message;
+    const int clock_message_font_size_percent = static_cast<int>(std::clamp<int64_t>(
+        obs_data_get_int(settings, "clock_message_font_size_percent"), 10, 100));
+    if (clock_mode && obs_data_get_bool(settings, "clock_messages_enabled")) {
+        const std::vector<std::string> messages = read_clock_messages(settings);
+        if (!messages.empty()) {
+            clock_message = QString::fromUtf8(messages.front().c_str());
+        }
+    }
+
     const uint32_t text_color_value = static_cast<uint32_t>(
         obs_data_get_int(settings, clock_mode ? "clock_text_color" : "text_color"));
     QColor text_color = qcolor_from_obs_rgba(text_color_value);
@@ -368,24 +403,49 @@ QString live_preview_markup(obs_data_t *settings)
     }
 
     const int font_size = 58 * size_percent / 100;
+    const int message_font_size = std::max(10, font_size * clock_message_font_size_percent / 100);
+    const QString sample_markup = clock_message.isEmpty()
+                                      ? QStringLiteral(
+                                            "<span style=\"font-family:'%6';font-size:%7px;color:%8;"
+                                            "font-weight:%9;font-style:%10;\">%11</span>")
+                                      : QStringLiteral(
+                                            "<table cellspacing='0' cellpadding='0' style='max-width:560px;'>"
+                                            "<tr><td align='center'>"
+                                            "<span style=\"font-family:'%6';font-size:%7px;color:%8;"
+                                            "font-weight:%9;font-style:%10;line-height:1.05;\">%11</span>"
+                                            "</td></tr><tr><td height='3'></td></tr><tr><td align='center'>"
+                                            "<span style=\"font-family:'%6';font-size:%12px;color:%8;"
+                                            "font-weight:%9;font-style:%10;line-height:1.1;\">%13</span>"
+                                            "</td></tr></table>");
     const QString html = QStringLiteral(
         "<html><body style='margin:0;padding:0;background:transparent'>"
         "<table width='620' height='180' cellspacing='0' cellpadding='0'><tr><td align='center' valign='middle'>"
         "<table cellspacing='0' cellpadding='%1' style='background-color:%2;border:%3px solid %4;"
         "border-radius:%5;'><tr><td align='center'>"
-        "<span style=\"font-family:'%6';font-size:%7px;color:%8;font-weight:%9;font-style:%10;\">%11</span>"
+        "%6"
         "</td></tr></table></td></tr></table></body></html>");
-    return html.arg(QString::number(padding))
-        .arg(fill)
-        .arg(QString::number(border_width))
-        .arg(rgba(border_color))
-        .arg(border_radius)
-        .arg(font_family.toHtmlEscaped())
+    QString rendered_sample = sample_markup.arg(font_family.toHtmlEscaped())
         .arg(QString::number(font_size))
         .arg(rgba(text_color))
         .arg(font_weight)
         .arg(font_style)
         .arg(sample.toHtmlEscaped());
+    if (!clock_message.isEmpty()) {
+        rendered_sample = sample_markup.arg(font_family.toHtmlEscaped())
+            .arg(QString::number(font_size))
+            .arg(rgba(text_color))
+            .arg(font_weight)
+            .arg(font_style)
+            .arg(sample.toHtmlEscaped())
+            .arg(QString::number(message_font_size))
+            .arg(clock_message.toHtmlEscaped());
+    }
+    return html.arg(QString::number(padding))
+        .arg(fill)
+        .arg(QString::number(border_width))
+        .arg(rgba(border_color))
+        .arg(border_radius)
+        .arg(rendered_sample);
 }
 
 class CountdownSource final {
@@ -433,6 +493,8 @@ public:
         read_font_settings(settings);
         read_clock_appearance_settings(settings);
         read_clock_font_settings(settings);
+        read_clock_message_settings(settings);
+        reset_clock_message_cycle_locked();
         if (display_mode_ == kDisplayModeCountdown && auto_start_ && !start_on_stream_start_) {
             timer_.start();
         }
@@ -548,6 +610,10 @@ public:
         read_font_settings(settings);
         read_clock_appearance_settings(settings);
         read_clock_font_settings(settings);
+        const bool clock_message_settings_changed = read_clock_message_settings(settings);
+        if (clock_message_settings_changed) {
+            reset_clock_message_cycle_locked();
+        }
 
         if (new_duration != duration_seconds_ || new_auto_start != auto_start_
             || new_start_on_stream_start != start_on_stream_start_ || display_mode_changed) {
@@ -580,6 +646,7 @@ public:
             if (display_mode_ == kDisplayModeClock) {
                 refresh_display_text_locked();
                 should_render = should_render || current_text_ != last_rendered_text_;
+                should_render = advance_clock_message_cycle_locked(delta_seconds) || should_render;
             }
 
             if (display_mode_ == kDisplayModeCountdown && timer_.state() == Countdown::State::running) {
@@ -744,6 +811,20 @@ public:
         obs_data_set_int(settings, "clock_frame_padding", clock_frame_padding_);
         obs_data_set_int(settings, "clock_frame_border_color", clock_frame_border_color_);
         obs_data_set_int(settings, "clock_frame_border_width", clock_frame_border_width_);
+        obs_data_set_bool(settings, "clock_messages_enabled", clock_messages_enabled_);
+        std::ostringstream message_lines;
+        for (std::size_t index = 0; index < clock_messages_.size(); ++index) {
+            if (index > 0) {
+                message_lines << '\n';
+            }
+            message_lines << clock_messages_[index];
+        }
+        obs_data_set_string(settings, "clock_messages", message_lines.str().c_str());
+        obs_data_set_int(settings, "clock_message_initial_delay_seconds", clock_message_initial_delay_seconds_);
+        obs_data_set_int(settings, "clock_message_interval_seconds", clock_message_interval_seconds_);
+        obs_data_set_int(settings, "clock_message_animation", clock_message_animation_);
+        obs_data_set_int(settings, "clock_message_animation_duration_ms", clock_message_animation_duration_ms_);
+        obs_data_set_int(settings, "clock_message_font_size_percent", clock_message_font_size_percent_);
 
         auto add_font = [settings](const char *key, const std::string &face, const std::string &style,
                                    int size, uint32_t flags) {
@@ -874,6 +955,94 @@ private:
                              clock_font_size_points_, clock_font_flags_);
     }
 
+    bool read_clock_message_settings(obs_data_t *settings)
+    {
+        const bool enabled = obs_data_get_bool(settings, "clock_messages_enabled");
+        const std::vector<std::string> messages = read_clock_messages(settings);
+        const int initial_delay = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_message_initial_delay_seconds"), 0, 3600));
+        const int interval = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_message_interval_seconds"), 1, 3600));
+        const int animation = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_message_animation"), kClockMessageAnimationNone,
+            kClockMessageAnimationZoom));
+        const int animation_duration = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_message_animation_duration_ms"), 100, 3000));
+        const int font_size_percent = static_cast<int>(std::clamp<int64_t>(
+            obs_data_get_int(settings, "clock_message_font_size_percent"), 10, 100));
+        const bool changed = enabled != clock_messages_enabled_ || messages != clock_messages_
+                             || initial_delay != clock_message_initial_delay_seconds_
+                             || interval != clock_message_interval_seconds_
+                             || animation != clock_message_animation_
+                             || animation_duration != clock_message_animation_duration_ms_
+                             || font_size_percent != clock_message_font_size_percent_;
+        clock_messages_enabled_ = enabled;
+        clock_messages_ = messages;
+        clock_message_initial_delay_seconds_ = initial_delay;
+        clock_message_interval_seconds_ = interval;
+        clock_message_animation_ = animation;
+        clock_message_animation_duration_ms_ = animation_duration;
+        clock_message_font_size_percent_ = font_size_percent;
+        return changed;
+    }
+
+    void reset_clock_message_cycle_locked()
+    {
+        clock_message_index_ = 0;
+        clock_message_elapsed_seconds_ = 0.0;
+        clock_message_animation_elapsed_seconds_ = 0.0;
+        clock_message_initial_delay_pending_ = true;
+        clock_message_animation_active_ = false;
+        clock_message_current_ = clock_messages_enabled_ && !clock_messages_.empty()
+                                     ? clock_messages_.front()
+                                     : std::string{};
+        clock_message_previous_ = clock_message_current_;
+    }
+
+    bool advance_clock_message_cycle_locked(double delta_seconds)
+    {
+        if (!clock_messages_enabled_ || clock_messages_.size() < 2) {
+            return false;
+        }
+
+        const bool was_animating = clock_message_animation_active_;
+        bool changed = false;
+        clock_message_elapsed_seconds_ += delta_seconds;
+        double threshold = static_cast<double>(clock_message_initial_delay_pending_
+                                                   ? clock_message_initial_delay_seconds_
+                                                   : clock_message_interval_seconds_);
+        while (clock_message_elapsed_seconds_ >= threshold) {
+            if (threshold > 0.0) {
+                clock_message_elapsed_seconds_ -= threshold;
+            }
+            clock_message_initial_delay_pending_ = false;
+            clock_message_previous_ = clock_message_current_;
+            clock_message_index_ = (clock_message_index_ + 1) % clock_messages_.size();
+            clock_message_current_ = clock_messages_[clock_message_index_];
+            clock_message_animation_elapsed_seconds_ = 0.0;
+            clock_message_animation_active_ = clock_message_animation_ != kClockMessageAnimationNone
+                                              && clock_message_animation_duration_ms_ > 0;
+            if (!clock_message_animation_active_) {
+                clock_message_previous_ = clock_message_current_;
+            }
+            changed = true;
+            threshold = static_cast<double>(clock_message_interval_seconds_);
+            if (threshold <= 0.0) {
+                break;
+            }
+        }
+
+        if (clock_message_animation_active_) {
+            clock_message_animation_elapsed_seconds_ += delta_seconds;
+            const double duration_seconds = static_cast<double>(clock_message_animation_duration_ms_) / 1000.0;
+            if (clock_message_animation_elapsed_seconds_ >= duration_seconds) {
+                clock_message_animation_active_ = false;
+                clock_message_previous_ = clock_message_current_;
+            }
+        }
+        return changed || was_animating || clock_message_animation_active_;
+    }
+
     void render_pixels_locked()
     {
         refresh_display_text_locked();
@@ -911,17 +1080,49 @@ private:
 
         const QString display_text = QString::fromUtf8(current_text_.c_str());
         const QString previous_text = QString::fromUtf8(previous_text_.c_str());
+        const bool show_clock_message = clock_mode && clock_messages_enabled_ && !clock_message_current_.empty();
+        const QString clock_message = QString::fromUtf8(clock_message_current_.c_str());
+        const QString previous_clock_message = QString::fromUtf8(clock_message_previous_.c_str());
         const QFontMetricsF initial_metrics(font);
         const QRectF current_bounds = initial_metrics.tightBoundingRect(display_text);
         const QRectF previous_bounds = initial_metrics.tightBoundingRect(previous_text);
         const double width_limit = static_cast<double>(kCanvasWidth - 2 * kMargin);
         const double height_limit = static_cast<double>(kCanvasHeight - 2 * kMargin);
-        const double text_width = std::max(current_bounds.width(), previous_bounds.width());
-        const double text_height = std::max(current_bounds.height(), previous_bounds.height());
+        const double time_width = std::max(current_bounds.width(), previous_bounds.width());
+        const double time_height = initial_metrics.height();
+        QFont initial_message_font = font;
+        initial_message_font.setPointSizeF(std::max(
+            1.0, initial_message_font.pointSizeF() * static_cast<double>(clock_message_font_size_percent_) / 100.0));
+        const QFontMetricsF initial_message_metrics(initial_message_font);
+        double message_width = 0.0;
+        if (show_clock_message) {
+            for (const std::string &message : clock_messages_) {
+                message_width = std::max(message_width,
+                    initial_message_metrics.horizontalAdvance(QString::fromUtf8(message.c_str())));
+            }
+        }
+        const double message_height = show_clock_message ? initial_message_metrics.height() : 0.0;
+        const double message_gap = show_clock_message ? std::max(4.0, initial_metrics.height() * 0.06) : 0.0;
+        const double text_width = std::max(time_width, message_width);
+        const double text_height = time_height + message_height + message_gap;
         const double width_scale = width_limit / std::max(1.0, text_width);
         const double height_scale = height_limit / std::max(1.0, text_height);
         const double fit_scale = std::min({1.0, width_scale, height_scale}) * active_font_size_percent / 100.0;
         font.setPointSizeF(std::max(1.0, font.pointSizeF() * fit_scale));
+        QFont message_font = font;
+        message_font.setPointSizeF(std::max(
+            1.0, message_font.pointSizeF() * static_cast<double>(clock_message_font_size_percent_) / 100.0));
+        const QFontMetricsF message_metrics(message_font);
+        const double render_message_gap = show_clock_message
+                                              ? std::max(4.0, QFontMetricsF(font).height() * 0.06)
+                                              : 0.0;
+        double fitted_message_width = 0.0;
+        if (show_clock_message) {
+            for (const std::string &message : clock_messages_) {
+                fitted_message_width = std::max(
+                    fitted_message_width, message_metrics.horizontalAdvance(QString::fromUtf8(message.c_str())));
+            }
+        }
 
         const double raw_progress = animation_active_
                                         ? std::clamp(animation_elapsed_seconds_ * 1000.0
@@ -934,13 +1135,23 @@ private:
         const double center_y = static_cast<double>(kCanvasHeight) / 2.0;
         if (clock_mode && clock_frame_enabled_) {
             const QFontMetricsF frame_metrics(font);
-            const double text_width = frame_metrics.horizontalAdvance(display_text);
-            const double text_height = frame_metrics.height();
+            const double frame_time_width = frame_metrics.horizontalAdvance(display_text);
+            double frame_message_width = 0.0;
+            if (show_clock_message) {
+                for (const std::string &message : clock_messages_) {
+                    frame_message_width = std::max(
+                        frame_message_width,
+                        message_metrics.horizontalAdvance(QString::fromUtf8(message.c_str())));
+                }
+            }
+            const double frame_text_width = std::max(frame_time_width, frame_message_width);
+            const double frame_text_height = frame_metrics.height()
+                                              + (show_clock_message ? message_metrics.height() + render_message_gap : 0.0);
             const double padding = static_cast<double>(clock_frame_padding_);
-            QRectF frame_rect(center_x - text_width / 2.0 - padding,
-                              center_y - text_height / 2.0 - padding,
-                              text_width + 2.0 * padding,
-                              text_height + 2.0 * padding);
+            QRectF frame_rect(center_x - frame_text_width / 2.0 - padding,
+                              center_y - frame_text_height / 2.0 - padding,
+                              frame_text_width + 2.0 * padding,
+                              frame_text_height + 2.0 * padding);
             const double border_width = static_cast<double>(clock_frame_border_width_);
             frame_rect.adjust(border_width / 2.0, border_width / 2.0, -border_width / 2.0, -border_width / 2.0);
             painter.setBrush(qcolor_from_obs_rgba(clock_frame_color_));
@@ -1189,6 +1400,10 @@ private:
             painter.restore();
         };
 
+        painter.save();
+        if (show_clock_message) {
+            painter.translate(0.0, -(message_metrics.height() + render_message_gap) / 2.0);
+        }
         if (!animation_active_) {
             draw_layer(display_text, 1.0, 1.0, 0.0, 0.0, false);
         } else if (draw_digit_transition()) {
@@ -1266,6 +1481,76 @@ private:
                 break;
             }
         }
+        painter.restore();
+
+        if (show_clock_message) {
+            const QFontMetricsF time_metrics(font);
+            const double caption_center_y = center_y + (time_metrics.height() + render_message_gap) / 2.0;
+            const double caption_viewport_width = std::min(
+                width_limit, std::max(fitted_message_width, QFontMetricsF(font).horizontalAdvance(display_text))
+                                 + (clock_frame_enabled_ ? 2.0 * clock_frame_padding_ : 48.0));
+            const QRectF caption_rect(center_x - caption_viewport_width / 2.0,
+                                      caption_center_y - message_metrics.height() / 2.0,
+                                      caption_viewport_width, message_metrics.height());
+            const double message_raw_progress = clock_message_animation_active_
+                                                    ? std::clamp(clock_message_animation_elapsed_seconds_ * 1000.0
+                                                                     / static_cast<double>(clock_message_animation_duration_ms_),
+                                                                 0.0, 1.0)
+                                                    : 1.0;
+            const double message_progress = ease_animation_progress(message_raw_progress, 1);
+            auto draw_clock_message_layer = [&](const QString &text, double opacity, double scale,
+                                                double offset_x, double offset_y) {
+                if (text.isEmpty() || opacity <= 0.0) {
+                    return;
+                }
+                painter.save();
+                painter.setClipRect(caption_rect, Qt::IntersectClip);
+                painter.setFont(message_font);
+                painter.setPen(qcolor_from_obs_rgba(clock_text_color_));
+                painter.setOpacity(std::clamp(opacity, 0.0, 1.0));
+                if (scale != 1.0 || offset_x != 0.0 || offset_y != 0.0) {
+                    painter.translate(caption_rect.center().x() + offset_x,
+                                     caption_rect.center().y() + offset_y);
+                    painter.scale(scale, scale);
+                    painter.translate(-caption_rect.center().x(), -caption_rect.center().y());
+                }
+                painter.drawText(caption_rect, Qt::AlignCenter, text);
+                painter.restore();
+            };
+
+            if (!clock_message_animation_active_ || clock_message_animation_ == kClockMessageAnimationNone) {
+                draw_clock_message_layer(clock_message, 1.0, 1.0, 0.0, 0.0);
+            } else {
+                const double outgoing_opacity = 1.0 - message_progress;
+                switch (clock_message_animation_) {
+                case kClockMessageAnimationFade:
+                    draw_clock_message_layer(previous_clock_message, outgoing_opacity, 1.0, 0.0, 0.0);
+                    draw_clock_message_layer(clock_message, message_progress, 1.0, 0.0, 0.0);
+                    break;
+                case kClockMessageAnimationSlideUp:
+                    draw_clock_message_layer(previous_clock_message, 1.0, 1.0, 0.0,
+                                             -caption_rect.height() * message_progress);
+                    draw_clock_message_layer(clock_message, 1.0, 1.0, 0.0,
+                                             caption_rect.height() * (1.0 - message_progress));
+                    break;
+                case kClockMessageAnimationSlideLeft:
+                    draw_clock_message_layer(previous_clock_message, 1.0, 1.0,
+                                             -caption_rect.width() * message_progress, 0.0);
+                    draw_clock_message_layer(clock_message, 1.0, 1.0,
+                                             caption_rect.width() * (1.0 - message_progress), 0.0);
+                    break;
+                case kClockMessageAnimationZoom:
+                    draw_clock_message_layer(previous_clock_message, outgoing_opacity,
+                                             1.0 + 0.12 * message_progress, 0.0, 0.0);
+                    draw_clock_message_layer(clock_message, message_progress,
+                                             0.78 + 0.22 * message_progress, 0.0, 0.0);
+                    break;
+                default:
+                    draw_clock_message_layer(clock_message, 1.0, 1.0, 0.0, 0.0);
+                    break;
+                }
+            }
+        }
 
         painter.end();
 
@@ -1292,6 +1577,20 @@ private:
     int clock_frame_padding_{24};
     uint32_t clock_frame_border_color_{kDefaultTextColor};
     int clock_frame_border_width_{0};
+    bool clock_messages_enabled_{false};
+    std::vector<std::string> clock_messages_;
+    int clock_message_initial_delay_seconds_{5};
+    int clock_message_interval_seconds_{5};
+    int clock_message_animation_{kClockMessageAnimationFade};
+    int clock_message_animation_duration_ms_{500};
+    int clock_message_font_size_percent_{28};
+    std::size_t clock_message_index_{0};
+    std::string clock_message_current_;
+    std::string clock_message_previous_;
+    double clock_message_elapsed_seconds_{0.0};
+    double clock_message_animation_elapsed_seconds_{0.0};
+    bool clock_message_initial_delay_pending_{true};
+    bool clock_message_animation_active_{false};
     std::string clock_font_face_{"Arial"};
     std::string clock_font_style_{"Regular"};
     std::string clock_custom_font_path_;
@@ -1417,6 +1716,13 @@ void source_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "clock_frame_padding", 24);
     obs_data_set_default_int(settings, "clock_frame_border_color", kDefaultTextColor);
     obs_data_set_default_int(settings, "clock_frame_border_width", 0);
+    obs_data_set_default_bool(settings, "clock_messages_enabled", false);
+    obs_data_set_default_string(settings, "clock_messages", "");
+    obs_data_set_default_int(settings, "clock_message_initial_delay_seconds", 5);
+    obs_data_set_default_int(settings, "clock_message_interval_seconds", 5);
+    obs_data_set_default_int(settings, "clock_message_animation", kClockMessageAnimationFade);
+    obs_data_set_default_int(settings, "clock_message_animation_duration_ms", 500);
+    obs_data_set_default_int(settings, "clock_message_font_size_percent", 28);
     obs_data_set_default_bool(settings, "auto_start", true);
     obs_data_set_default_bool(settings, "show_background", false);
     obs_data_set_default_bool(settings, "antialiasing", true);
@@ -1494,7 +1800,7 @@ void set_display_mode_visibility(obs_properties_t *properties, int display_mode)
             obs_property_set_visible(property, show_countdown);
         }
     }
-    const char *clock_groups[] = {"clock_format_group", "clock_appearance_group"};
+    const char *clock_groups[] = {"clock_format_group", "clock_appearance_group", "clock_messages_group"};
     for (const char *name : clock_groups) {
         obs_property_t *property = obs_properties_get(properties, name);
         if (property != nullptr) {
@@ -1627,6 +1933,46 @@ obs_properties_t *source_properties(void *data)
     obs_property_set_modified_callback(clock_frame_border_width, live_preview_modified);
     obs_properties_add_group(properties, "clock_appearance_group", obs_module_text("Settings.ClockAppearanceGroup"),
                              OBS_GROUP_NORMAL, clock_appearance);
+
+    auto *clock_messages = obs_properties_create();
+    auto *clock_messages_enabled = obs_properties_add_bool(
+        clock_messages, "clock_messages_enabled", obs_module_text("Settings.ClockMessagesEnabled"));
+    obs_property_set_modified_callback(clock_messages_enabled, live_preview_modified);
+    auto *clock_messages_text = obs_properties_add_text(
+        clock_messages, "clock_messages", obs_module_text("Settings.ClockMessages"), OBS_TEXT_MULTILINE);
+    obs_property_set_modified_callback(clock_messages_text, live_preview_modified);
+    auto *clock_message_initial_delay = obs_properties_add_int(
+        clock_messages, "clock_message_initial_delay_seconds",
+        obs_module_text("Settings.ClockMessageInitialDelay"), 0, 3600, 1);
+    obs_property_set_modified_callback(clock_message_initial_delay, live_preview_modified);
+    auto *clock_message_interval = obs_properties_add_int(
+        clock_messages, "clock_message_interval_seconds", obs_module_text("Settings.ClockMessageInterval"),
+        1, 3600, 1);
+    obs_property_set_modified_callback(clock_message_interval, live_preview_modified);
+    auto *clock_message_animation = obs_properties_add_list(
+        clock_messages, "clock_message_animation", obs_module_text("Settings.ClockMessageAnimation"),
+        OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_list_add_int(clock_message_animation, obs_module_text("Clock.MessageAnimation.None"),
+                              kClockMessageAnimationNone);
+    obs_property_list_add_int(clock_message_animation, obs_module_text("Clock.MessageAnimation.Fade"),
+                              kClockMessageAnimationFade);
+    obs_property_list_add_int(clock_message_animation, obs_module_text("Clock.MessageAnimation.SlideUp"),
+                              kClockMessageAnimationSlideUp);
+    obs_property_list_add_int(clock_message_animation, obs_module_text("Clock.MessageAnimation.SlideLeft"),
+                              kClockMessageAnimationSlideLeft);
+    obs_property_list_add_int(clock_message_animation, obs_module_text("Clock.MessageAnimation.Zoom"),
+                              kClockMessageAnimationZoom);
+    obs_property_set_modified_callback(clock_message_animation, live_preview_modified);
+    auto *clock_message_animation_duration = obs_properties_add_int_slider(
+        clock_messages, "clock_message_animation_duration_ms",
+        obs_module_text("Settings.ClockMessageAnimationDuration"), 100, 3000, 50);
+    obs_property_set_modified_callback(clock_message_animation_duration, live_preview_modified);
+    auto *clock_message_font_size = obs_properties_add_int_slider(
+        clock_messages, "clock_message_font_size_percent",
+        obs_module_text("Settings.ClockMessageFontSize"), 10, 100, 1);
+    obs_property_set_modified_callback(clock_message_font_size, live_preview_modified);
+    obs_properties_add_group(properties, "clock_messages_group", obs_module_text("Settings.ClockMessagesGroup"),
+                             OBS_GROUP_NORMAL, clock_messages);
 
     auto *rendering_settings = obs_properties_create();
     auto *antialiasing = obs_properties_add_bool(rendering_settings, "antialiasing",
