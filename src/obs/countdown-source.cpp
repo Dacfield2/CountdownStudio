@@ -67,6 +67,25 @@ constexpr int kClockMessageAnimationSlideLeft = 3;
 constexpr int kClockMessageAnimationZoom = 4;
 constexpr double kPi = 3.14159265358979323846;
 
+enum class ClockMessageNetwork {
+    None,
+    Twitch,
+    YouTube,
+    X,
+    Instagram,
+    TikTok,
+    Discord,
+    Facebook,
+    Kick,
+    Bluesky,
+    Threads,
+};
+
+struct ClockMessagePresentation {
+    ClockMessageNetwork network{ClockMessageNetwork::None};
+    std::string text;
+};
+
 struct MomentRule {
     bool enabled{false};
     int64_t seconds{0};
@@ -101,6 +120,105 @@ std::vector<std::string> read_clock_messages(obs_data_t *settings)
         }
     }
     return messages;
+}
+
+ClockMessagePresentation parse_clock_message(const std::string &line)
+{
+    ClockMessagePresentation message;
+    message.text = line;
+    if (line.size() < 3 || line.front() != '[') {
+        return message;
+    }
+
+    const std::size_t closing_bracket = line.find(']');
+    if (closing_bracket == std::string::npos) {
+        return message;
+    }
+
+    std::string network = line.substr(1, closing_bracket - 1);
+    std::transform(network.begin(), network.end(), network.begin(), [](unsigned char character) {
+        return static_cast<char>(std::tolower(character));
+    });
+    if (network == "twitch") {
+        message.network = ClockMessageNetwork::Twitch;
+    } else if (network == "youtube" || network == "yt") {
+        message.network = ClockMessageNetwork::YouTube;
+    } else if (network == "x" || network == "twitter") {
+        message.network = ClockMessageNetwork::X;
+    } else if (network == "instagram" || network == "ig") {
+        message.network = ClockMessageNetwork::Instagram;
+    } else if (network == "tiktok") {
+        message.network = ClockMessageNetwork::TikTok;
+    } else if (network == "discord") {
+        message.network = ClockMessageNetwork::Discord;
+    } else if (network == "facebook" || network == "fb") {
+        message.network = ClockMessageNetwork::Facebook;
+    } else if (network == "kick") {
+        message.network = ClockMessageNetwork::Kick;
+    } else if (network == "bluesky") {
+        message.network = ClockMessageNetwork::Bluesky;
+    } else if (network == "threads") {
+        message.network = ClockMessageNetwork::Threads;
+    }
+
+    if (message.network == ClockMessageNetwork::None) {
+        return message;
+    }
+
+    const auto first = std::find_if_not(line.begin() + static_cast<std::ptrdiff_t>(closing_bracket + 1),
+                                        line.end(), [](unsigned char character) {
+                                            return std::isspace(character) != 0;
+                                        });
+    message.text.assign(first, line.end());
+    return message;
+}
+
+QString clock_message_network_glyph(ClockMessageNetwork network)
+{
+    switch (network) {
+    case ClockMessageNetwork::Twitch: return QStringLiteral("T");
+    case ClockMessageNetwork::YouTube: return QStringLiteral("YT");
+    case ClockMessageNetwork::X: return QStringLiteral("X");
+    case ClockMessageNetwork::Instagram: return QStringLiteral("IG");
+    case ClockMessageNetwork::TikTok: return QStringLiteral("TT");
+    case ClockMessageNetwork::Discord: return QStringLiteral("D");
+    case ClockMessageNetwork::Facebook: return QStringLiteral("f");
+    case ClockMessageNetwork::Kick: return QStringLiteral("K");
+    case ClockMessageNetwork::Bluesky: return QStringLiteral("B");
+    case ClockMessageNetwork::Threads: return QStringLiteral("@");
+    default: return {};
+    }
+}
+
+QColor clock_message_network_color(ClockMessageNetwork network)
+{
+    switch (network) {
+    case ClockMessageNetwork::Twitch: return QColor(145, 70, 255);
+    case ClockMessageNetwork::YouTube: return QColor(255, 0, 51);
+    case ClockMessageNetwork::X: return QColor(24, 24, 24);
+    case ClockMessageNetwork::Instagram: return QColor(193, 53, 132);
+    case ClockMessageNetwork::TikTok: return QColor(20, 20, 20);
+    case ClockMessageNetwork::Discord: return QColor(88, 101, 242);
+    case ClockMessageNetwork::Facebook: return QColor(24, 119, 242);
+    case ClockMessageNetwork::Kick: return QColor(83, 252, 24);
+    case ClockMessageNetwork::Bluesky: return QColor(0, 133, 255);
+    case ClockMessageNetwork::Threads: return QColor(24, 24, 24);
+    default: return Qt::transparent;
+    }
+}
+
+double clock_message_width(const std::string &line, const QFontMetricsF &metrics)
+{
+    const ClockMessagePresentation message = parse_clock_message(line);
+    const QString text = QString::fromUtf8(message.text.c_str());
+    const double text_width = metrics.horizontalAdvance(text);
+    if (message.network == ClockMessageNetwork::None) {
+        return text_width;
+    }
+
+    const double badge_size = std::max(1.0, metrics.height() * 0.76);
+    const double gap = text.isEmpty() ? 0.0 : badge_size * 0.3;
+    return badge_size + gap + text_width;
 }
 
 void read_font_properties(obs_data_t *settings, const char *name, std::string &face, std::string &style,
@@ -323,12 +441,16 @@ QString live_preview_markup(obs_data_t *settings)
     }
 
     QString clock_message;
+    ClockMessagePresentation clock_message_presentation;
+    bool has_clock_message = false;
     const int clock_message_font_size_percent = static_cast<int>(std::clamp<int64_t>(
         obs_data_get_int(settings, "clock_message_font_size_percent"), 10, 100));
     if (clock_mode && obs_data_get_bool(settings, "clock_messages_enabled")) {
         const std::vector<std::string> messages = read_clock_messages(settings);
         if (!messages.empty()) {
-            clock_message = QString::fromUtf8(messages.front().c_str());
+            clock_message_presentation = parse_clock_message(messages.front());
+            clock_message = QString::fromUtf8(clock_message_presentation.text.c_str());
+            has_clock_message = true;
         }
     }
 
@@ -404,7 +526,23 @@ QString live_preview_markup(obs_data_t *settings)
 
     const int font_size = 58 * size_percent / 100;
     const int message_font_size = std::max(10, font_size * clock_message_font_size_percent / 100);
-    const QString sample_markup = clock_message.isEmpty()
+    QString clock_message_markup = clock_message.toHtmlEscaped();
+    if (clock_message_presentation.network != ClockMessageNetwork::None) {
+        const int badge_size = std::max(14, message_font_size);
+        const QString badge_color = clock_message_network_color(clock_message_presentation.network).name();
+        const QString glyph = clock_message_network_glyph(clock_message_presentation.network).toHtmlEscaped();
+        clock_message_markup = QStringLiteral(
+            "<span style='display:inline-block;width:%1px;height:%1px;line-height:%1px;vertical-align:middle;"
+            "text-align:center;border-radius:25%;background:%2;color:white;font-size:%3px;font-weight:700;'>%4</span>"
+            "%5%6")
+                                   .arg(QString::number(badge_size))
+                                   .arg(badge_color)
+                                   .arg(QString::number(std::max(10, badge_size * 62 / 100)))
+                                   .arg(glyph)
+                                   .arg(clock_message.isEmpty() ? QString{} : QStringLiteral("&nbsp;"))
+                                   .arg(clock_message.toHtmlEscaped());
+    }
+    const QString sample_markup = !has_clock_message
                                       ? QStringLiteral(
                                             "<span style=\"font-family:'%6';font-size:%7px;color:%8;"
                                             "font-weight:%9;font-style:%10;\">%11</span>")
@@ -430,7 +568,7 @@ QString live_preview_markup(obs_data_t *settings)
         .arg(font_weight)
         .arg(font_style)
         .arg(sample.toHtmlEscaped());
-    if (!clock_message.isEmpty()) {
+    if (has_clock_message) {
         rendered_sample = sample_markup.arg(font_family.toHtmlEscaped())
             .arg(QString::number(font_size))
             .arg(rgba(text_color))
@@ -438,7 +576,7 @@ QString live_preview_markup(obs_data_t *settings)
             .arg(font_style)
             .arg(sample.toHtmlEscaped())
             .arg(QString::number(message_font_size))
-            .arg(clock_message.toHtmlEscaped());
+            .arg(clock_message_markup);
     }
     return html.arg(QString::number(padding))
         .arg(fill)
@@ -1081,8 +1219,6 @@ private:
         const QString display_text = QString::fromUtf8(current_text_.c_str());
         const QString previous_text = QString::fromUtf8(previous_text_.c_str());
         const bool show_clock_message = clock_mode && clock_messages_enabled_ && !clock_message_current_.empty();
-        const QString clock_message = QString::fromUtf8(clock_message_current_.c_str());
-        const QString previous_clock_message = QString::fromUtf8(clock_message_previous_.c_str());
         const QFontMetricsF initial_metrics(font);
         const QRectF current_bounds = initial_metrics.tightBoundingRect(display_text);
         const QRectF previous_bounds = initial_metrics.tightBoundingRect(previous_text);
@@ -1097,8 +1233,7 @@ private:
         double message_width = 0.0;
         if (show_clock_message) {
             for (const std::string &message : clock_messages_) {
-                message_width = std::max(message_width,
-                    initial_message_metrics.horizontalAdvance(QString::fromUtf8(message.c_str())));
+                message_width = std::max(message_width, clock_message_width(message, initial_message_metrics));
             }
         }
         const double message_height = show_clock_message ? initial_message_metrics.height() : 0.0;
@@ -1119,8 +1254,7 @@ private:
         double fitted_message_width = 0.0;
         if (show_clock_message) {
             for (const std::string &message : clock_messages_) {
-                fitted_message_width = std::max(
-                    fitted_message_width, message_metrics.horizontalAdvance(QString::fromUtf8(message.c_str())));
+                fitted_message_width = std::max(fitted_message_width, clock_message_width(message, message_metrics));
             }
         }
 
@@ -1139,9 +1273,8 @@ private:
             double frame_message_width = 0.0;
             if (show_clock_message) {
                 for (const std::string &message : clock_messages_) {
-                    frame_message_width = std::max(
-                        frame_message_width,
-                        message_metrics.horizontalAdvance(QString::fromUtf8(message.c_str())));
+                    frame_message_width = std::max(frame_message_width,
+                                                   clock_message_width(message, message_metrics));
                 }
             }
             const double frame_text_width = std::max(frame_time_width, frame_message_width);
@@ -1498,15 +1631,23 @@ private:
                                                                  0.0, 1.0)
                                                     : 1.0;
             const double message_progress = ease_animation_progress(message_raw_progress, 1);
-            auto draw_clock_message_layer = [&](const QString &text, double opacity, double scale,
+            auto draw_clock_message_layer = [&](const std::string &raw_message, double opacity, double scale,
                                                 double offset_x, double offset_y) {
-                if (text.isEmpty() || opacity <= 0.0) {
+                if (raw_message.empty() || opacity <= 0.0) {
                     return;
                 }
+                const ClockMessagePresentation message = parse_clock_message(raw_message);
+                const QString text = QString::fromUtf8(message.text.c_str());
+                const double badge_size = message.network == ClockMessageNetwork::None
+                                              ? 0.0
+                                              : std::min(message_metrics.height() * 0.76,
+                                                         caption_rect.height());
+                const double gap = badge_size > 0.0 && !text.isEmpty() ? badge_size * 0.3 : 0.0;
+                const double text_width = message_metrics.horizontalAdvance(text);
+                const double content_width = badge_size + gap + text_width;
                 painter.save();
                 painter.setClipRect(caption_rect, Qt::IntersectClip);
                 painter.setFont(message_font);
-                painter.setPen(qcolor_from_obs_rgba(clock_text_color_));
                 painter.setOpacity(std::clamp(opacity, 0.0, 1.0));
                 if (scale != 1.0 || offset_x != 0.0 || offset_y != 0.0) {
                     painter.translate(caption_rect.center().x() + offset_x,
@@ -1514,39 +1655,69 @@ private:
                     painter.scale(scale, scale);
                     painter.translate(-caption_rect.center().x(), -caption_rect.center().y());
                 }
-                painter.drawText(caption_rect, Qt::AlignCenter, text);
+                double content_left = caption_rect.center().x() - content_width / 2.0;
+                if (message.network != ClockMessageNetwork::None) {
+                    const QRectF badge_rect(content_left,
+                                            caption_rect.center().y() - badge_size / 2.0,
+                                            badge_size, badge_size);
+                    const QColor badge_color = clock_message_network_color(message.network);
+                    const bool dark_badge = message.network == ClockMessageNetwork::X
+                                            || message.network == ClockMessageNetwork::TikTok
+                                            || message.network == ClockMessageNetwork::Threads;
+                    painter.setPen(dark_badge
+                                       ? QPen(QColor(255, 255, 255, 140), std::max(1.0, badge_size * 0.04))
+                                       : QPen(Qt::NoPen));
+                    painter.setBrush(badge_color);
+                    painter.drawRoundedRect(badge_rect, badge_size * 0.25, badge_size * 0.25);
+                    QFont badge_font = message_font;
+                    badge_font.setBold(true);
+                    const QString glyph = clock_message_network_glyph(message.network);
+                    badge_font.setPointSizeF(std::max(1.0, badge_size * (glyph.size() > 1 ? 0.42 : 0.62)));
+                    painter.setFont(badge_font);
+                    painter.setPen(message.network == ClockMessageNetwork::Kick ? QColor(22, 22, 22)
+                                                                                 : QColor(Qt::white));
+                    painter.drawText(badge_rect, Qt::AlignCenter, glyph);
+                    content_left += badge_size + gap;
+                }
+                if (!text.isEmpty()) {
+                    painter.setFont(message_font);
+                    painter.setPen(qcolor_from_obs_rgba(clock_text_color_));
+                    const QRectF text_rect(content_left, caption_rect.top(), text_width + 1.0,
+                                           caption_rect.height());
+                    painter.drawText(text_rect, Qt::AlignVCenter | Qt::AlignLeft, text);
+                }
                 painter.restore();
             };
 
             if (!clock_message_animation_active_ || clock_message_animation_ == kClockMessageAnimationNone) {
-                draw_clock_message_layer(clock_message, 1.0, 1.0, 0.0, 0.0);
+                draw_clock_message_layer(clock_message_current_, 1.0, 1.0, 0.0, 0.0);
             } else {
                 const double outgoing_opacity = 1.0 - message_progress;
                 switch (clock_message_animation_) {
                 case kClockMessageAnimationFade:
-                    draw_clock_message_layer(previous_clock_message, outgoing_opacity, 1.0, 0.0, 0.0);
-                    draw_clock_message_layer(clock_message, message_progress, 1.0, 0.0, 0.0);
+                    draw_clock_message_layer(clock_message_previous_, outgoing_opacity, 1.0, 0.0, 0.0);
+                    draw_clock_message_layer(clock_message_current_, message_progress, 1.0, 0.0, 0.0);
                     break;
                 case kClockMessageAnimationSlideUp:
-                    draw_clock_message_layer(previous_clock_message, 1.0, 1.0, 0.0,
+                    draw_clock_message_layer(clock_message_previous_, 1.0, 1.0, 0.0,
                                              -caption_rect.height() * message_progress);
-                    draw_clock_message_layer(clock_message, 1.0, 1.0, 0.0,
+                    draw_clock_message_layer(clock_message_current_, 1.0, 1.0, 0.0,
                                              caption_rect.height() * (1.0 - message_progress));
                     break;
                 case kClockMessageAnimationSlideLeft:
-                    draw_clock_message_layer(previous_clock_message, 1.0, 1.0,
+                    draw_clock_message_layer(clock_message_previous_, 1.0, 1.0,
                                              -caption_rect.width() * message_progress, 0.0);
-                    draw_clock_message_layer(clock_message, 1.0, 1.0,
+                    draw_clock_message_layer(clock_message_current_, 1.0, 1.0,
                                              caption_rect.width() * (1.0 - message_progress), 0.0);
                     break;
                 case kClockMessageAnimationZoom:
-                    draw_clock_message_layer(previous_clock_message, outgoing_opacity,
+                    draw_clock_message_layer(clock_message_previous_, outgoing_opacity,
                                              1.0 + 0.12 * message_progress, 0.0, 0.0);
-                    draw_clock_message_layer(clock_message, message_progress,
+                    draw_clock_message_layer(clock_message_current_, message_progress,
                                              0.78 + 0.22 * message_progress, 0.0, 0.0);
                     break;
                 default:
-                    draw_clock_message_layer(clock_message, 1.0, 1.0, 0.0, 0.0);
+                    draw_clock_message_layer(clock_message_current_, 1.0, 1.0, 0.0, 0.0);
                     break;
                 }
             }
@@ -1836,6 +2007,13 @@ bool live_preview_modified(obs_properties_t *properties, obs_property_t *, obs_d
     return true;
 }
 
+bool clock_messages_modified(obs_properties_t *properties, obs_property_t *, obs_data_t *settings)
+{
+    refresh_live_preview(properties, settings);
+    // Rebuilding the property sheet for every typed character resets the text cursor.
+    return false;
+}
+
 obs_properties_t *source_properties(void *data)
 {
     auto *properties = obs_properties_create();
@@ -1938,9 +2116,11 @@ obs_properties_t *source_properties(void *data)
     auto *clock_messages_enabled = obs_properties_add_bool(
         clock_messages, "clock_messages_enabled", obs_module_text("Settings.ClockMessagesEnabled"));
     obs_property_set_modified_callback(clock_messages_enabled, live_preview_modified);
+    obs_properties_add_text(clock_messages, "clock_messages_help", obs_module_text("Settings.ClockMessagesHelp"),
+                            OBS_TEXT_INFO);
     auto *clock_messages_text = obs_properties_add_text(
         clock_messages, "clock_messages", obs_module_text("Settings.ClockMessages"), OBS_TEXT_MULTILINE);
-    obs_property_set_modified_callback(clock_messages_text, live_preview_modified);
+    obs_property_set_modified_callback(clock_messages_text, clock_messages_modified);
     auto *clock_message_initial_delay = obs_properties_add_int(
         clock_messages, "clock_message_initial_delay_seconds",
         obs_module_text("Settings.ClockMessageInitialDelay"), 0, 3600, 1);

@@ -13,7 +13,7 @@ A native OBS Studio source for countdown timers and a customizable local clock. 
 - Key-moment actions and an optional scene change when the timer ends.
 - Custom text, system or custom fonts, colors, and whole-timer or per-digit animations.
 - Clock mode with independent font and color settings, plus an optional customizable frame.
-- Optional rotating clock captions with a configurable delay, interval, text size, and transition animation.
+- Optional rotating clock captions with configurable timing and animation, plus badges for Twitch, YouTube, X, Instagram, TikTok, Discord, Facebook, Kick, Bluesky, and Threads.
 - In-properties preview that updates as you change settings.
 
 ## Download and install
@@ -23,7 +23,7 @@ Get the package for your operating system and OBS version from [Releases](https:
 ### Windows
 
 1. Close OBS.
-2. Download and run the installer matching your OBS version: OBS 32 or OBS 33 and newer.
+2. Download and run the installer matching your OBS version: OBS 32 or OBS 33 and newer. It offers to uninstall the previous version before installing the update.
 3. Reopen OBS.
 
 ### Linux
@@ -42,7 +42,7 @@ There is no macOS release package yet.
 3. Select the source to show its controls beside **Properties** and **Filters**.
 4. Start the timer, or enable **Start when streaming starts** in the source properties.
 
-To use the source as a clock, choose **Current local time** under **Display mode**. Select **HH:MM** or **HH:MM:SS**, then adjust the clock font, size, text color, and optional frame. The frame supports rectangle, rounded rectangle, pill, and ellipse shapes, with configurable fill, border, radius, and padding. Enable rotating messages to show one or more caption lines beneath the time; set the initial delay, interval, text size, and transition animation.
+To use the source as a clock, choose **Current local time** under **Display mode**. Select **HH:MM** or **HH:MM:SS**, then adjust the clock font, size, text color, and optional frame. The frame supports rectangle, rounded rectangle, pill, and ellipse shapes, with configurable fill, border, radius, and padding. Enable rotating messages to show one or more caption lines beneath the time; set the initial delay, interval, text size, and transition animation. To show a network badge, prefix a line with `[twitch]`, `[youtube]`, `[x]`, `[instagram]`, `[tiktok]`, `[discord]`, `[facebook]`, `[kick]`, `[bluesky]`, or `[threads]`.
 
 ## Build and contribute
 
@@ -67,7 +67,7 @@ Countdown Studio est une source native pour OBS Studio qui propose un compte à 
 - Actions aux moments clés et changement de scène facultatif à la fin du décompte.
 - Texte, polices système ou personnalisées, couleurs et animations du minuteur entier ou des chiffres seuls.
 - Mode horloge avec police et couleurs indépendantes, ainsi qu’un cadre personnalisable.
-- Textes facultatifs qui défilent sous l’heure, avec délai, intervalle, taille et animation réglables.
+- Textes facultatifs qui défilent sous l’heure, avec délai, intervalle et animation réglables, et badges pour Twitch, YouTube, X, Instagram, TikTok, Discord, Facebook, Kick, Bluesky et Threads.
 - Aperçu dans les propriétés, actualisé lorsque vous modifiez les réglages.
 
 ### Télécharger et installer
@@ -77,7 +77,7 @@ Téléchargez le paquet correspondant à votre système et à votre version d’
 #### Windows
 
 1. Fermez OBS.
-2. Téléchargez puis lancez l’installateur correspondant à votre version d’OBS : OBS 32 ou OBS 33 et versions ultérieures.
+2. Téléchargez puis lancez l’installateur correspondant à votre version d’OBS : OBS 32 ou OBS 33 et versions ultérieures. Il propose de désinstaller la version précédente avant d’installer la mise à jour.
 3. Rouvrez OBS.
 
 #### Linux
@@ -96,7 +96,7 @@ Aucun paquet macOS n’est disponible pour le moment.
 3. Sélectionnez la source pour afficher ses commandes à côté de **Propriétés** et **Filtres**.
 4. Démarrez le minuteur ou cochez **Démarrer au lancement du direct** dans les propriétés.
 
-Pour utiliser la source comme horloge, choisissez **Heure locale actuelle** dans **Mode d’affichage**. Sélectionnez **HH:MM** ou **HH:MM:SS**, puis réglez la police, la taille, la couleur du texte et le cadre facultatif. Le cadre peut être rectangulaire, arrondi, en forme de capsule ou elliptique; sa couleur, son contour, son arrondi et sa marge sont personnalisables. Activez les textes défilants pour afficher une ou plusieurs lignes sous l’heure, puis réglez le délai initial, l’intervalle, la taille du texte et l’animation.
+Pour utiliser la source comme horloge, choisissez **Heure locale actuelle** dans **Mode d’affichage**. Sélectionnez **HH:MM** ou **HH:MM:SS**, puis réglez la police, la taille, la couleur du texte et le cadre facultatif. Le cadre peut être rectangulaire, arrondi, en forme de capsule ou elliptique; sa couleur, son contour, son arrondi et sa marge sont personnalisables. Activez les textes défilants pour afficher une ou plusieurs lignes sous l’heure, puis réglez le délai initial, l’intervalle, la taille du texte et l’animation. Pour ajouter un badge, commencez la ligne par `[twitch]`, `[youtube]`, `[x]`, `[instagram]`, `[tiktok]`, `[discord]`, `[facebook]`, `[kick]`, `[bluesky]` ou `[threads]`.
 
 ### Compilation et contribution
 
